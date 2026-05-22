@@ -44,3 +44,8 @@ ignore = ["B008"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
+
+[tool.hatch.build.targets.wheel]
+
+packages = ["app"]
+
