@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-evaluation-service
+  labels:
+    app: llm-evaluation-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llm-evaluation-service
+  template:
+    metadata:
+      labels:
+        app: llm-evaluation-service
+    spec:
+      containers:
+        - name: service
+          image: llm-evaluation-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: llm-evaluation-service-config
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

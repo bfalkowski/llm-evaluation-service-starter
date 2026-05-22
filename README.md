@@ -1,0 +1,276 @@
+# llm-evaluation-service
+
+A clean-room, production-minded FastAPI starter for a small **LLM Evaluation Job Service**.
+
+This repository is intentionally small. It demonstrates how an AI-adjacent platform service can be structured around clean API boundaries, typed domain models, deterministic tests, async job processing, structured logging, OpenTelemetry tracing, durable job metadata, and deployability without requiring a real model provider, external queue, auth system, or observability backend.
+
+## Clean-room note
+
+This is a public portfolio project. It is not derived from employer code, proprietary package names, confidential architecture, internal APIs, private workflows, or company-specific implementation patterns.
+
+AI coding tools may have been used to assist with scaffolding. Human review, simplification, testing, and refinement are expected before using this as a public portfolio artifact.
+
+## What this repo demonstrates
+
+- FastAPI service design with versioned evaluation endpoints.
+- Async job submission and processing through a replaceable in-memory queue abstraction.
+- PostgreSQL-backed job repository by default, with an in-memory repository available for tests and lightweight demos.
+- Explicit job state transitions: `queued`, `running`, `succeeded`, and `failed`.
+- Typed application errors mapped to consistent JSON error responses.
+- Structured JSON logs with request/correlation IDs.
+- OpenTelemetry FastAPI instrumentation and custom spans around job creation, job processing, and scoring.
+- A deterministic mock evaluator that stands in for a real LLM provider call.
+- Unit and integration tests using pytest and FastAPI TestClient.
+- Dockerfile, docker-compose, and basic Kubernetes manifests with liveness/readiness probes.
+
+## What this intentionally does not do
+
+- No real model provider integration.
+- No durable external queue.
+- No authentication or RBAC.
+- No production audit log store.
+- No migration framework such as Alembic yet.
+- No metrics backend or trace collector requirement.
+- No prompt/answer logging by default.
+
+These are omitted on purpose so the template stays understandable and easy to discuss in an interview.
+
+## Architecture overview
+
+```text
+app/
+  main.py                 FastAPI app factory, lifespan, middleware, dependency wiring
+  api/                    HTTP routes and health checks
+  core/                   config, logging, tracing, errors, resilience, audit helpers
+  domain/                 Pydantic models and deterministic scoring logic
+  services/               evaluator, job service, in-memory queue abstraction
+  storage/                repository protocol, Postgres repository, in-memory repository
+
+tests/
+  unit/                   evaluator and job transition tests
+  integration/            API endpoint tests
+
+deploy/
+  docker-compose.yml      Service plus local Postgres
+  k8s/                    Deployment, Service, ConfigMap, demo Postgres manifest
+```
+
+The main flow is:
+
+1. `POST /v1/evaluations` validates the request.
+2. The job service creates a job with status `queued`.
+3. The job is stored in PostgreSQL by default.
+4. The job ID is placed on the in-memory queue.
+5. A background worker marks it `running`, calls the mock evaluator, then marks it `succeeded` or `failed`.
+6. `GET /v1/evaluations/{job_id}` returns status and result metadata.
+
+Prompt and answer content are accepted by the service but are not returned in the default job status response.
+
+## Storage
+
+PostgreSQL is the default storage backend:
+
+```bash
+APP_STORAGE_BACKEND=postgres
+APP_DATABASE_URL=postgresql+asyncpg://app:app@localhost:5432/llm_evaluations
+```
+
+For tests or very lightweight local experiments, you can switch to in-memory storage:
+
+```bash
+APP_STORAGE_BACKEND=memory uvicorn app.main:app --reload
+```
+
+The Postgres repository creates its table on startup to keep this starter easy to run. A production version should replace that with Alembic migrations and a reviewed schema rollout process.
+
+## API examples
+
+Start Postgres and the service:
+
+```bash
+cd deploy
+docker compose up --build
+```
+
+Submit an evaluation:
+
+```bash
+curl -s -X POST http://localhost:8000/v1/evaluations \
+  -H 'content-type: application/json' \
+  -H 'x-request-id: demo-request-001' \
+  -d '{
+    "tenant_id": "tenant-a",
+    "project_id": "project-a",
+    "question": "Why is observability important for AI platform services?",
+    "answer": "Observability helps teams understand latency, failures, cost, and quality behavior across AI workflows.",
+    "rubric": "Mention latency, failures, or quality."
+  }'
+```
+
+Example response:
+
+```json
+{
+  "job_id": "00000000-0000-0000-0000-000000000000",
+  "status": "queued",
+  "request_id": "demo-request-001"
+}
+```
+
+Retrieve a job:
+
+```bash
+curl -s http://localhost:8000/v1/evaluations/<job_id>
+```
+
+Health checks:
+
+```bash
+curl -s http://localhost:8000/health/live
+curl -s http://localhost:8000/health/ready
+```
+
+## Local development
+
+Create a virtual environment and install dependencies:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+```
+
+Run Postgres locally:
+
+```bash
+cd deploy
+docker compose up postgres
+```
+
+Run the service against Postgres:
+
+```bash
+APP_DATABASE_URL=postgresql+asyncpg://app:app@localhost:5432/llm_evaluations \
+uvicorn app.main:app --reload
+```
+
+Run the service without Postgres:
+
+```bash
+APP_STORAGE_BACKEND=memory uvicorn app.main:app --reload
+```
+
+Run tests:
+
+```bash
+pytest
+```
+
+Run linting:
+
+```bash
+ruff check .
+```
+
+## Docker
+
+Build and run directly against a reachable Postgres database:
+
+```bash
+docker build -t llm-evaluation-service:latest .
+docker run --rm -p 8000:8000 \
+  -e APP_DATABASE_URL='postgresql+asyncpg://app:app@host.docker.internal:5432/llm_evaluations' \
+  llm-evaluation-service:latest
+```
+
+Run the service and Postgres together:
+
+```bash
+cd deploy
+docker compose up --build
+```
+
+## Kubernetes notes
+
+The manifests in `deploy/k8s` are intentionally basic.
+
+```bash
+kubectl apply -f deploy/k8s/postgres.yaml
+kubectl apply -f deploy/k8s/configmap.yaml
+kubectl apply -f deploy/k8s/deployment.yaml
+kubectl apply -f deploy/k8s/service.yaml
+```
+
+The demo deployment includes:
+
+- One service replica.
+- Liveness probe on `/health/live`.
+- Readiness probe on `/health/ready`.
+- ConfigMap-driven environment variables.
+- Conservative CPU and memory requests/limits.
+- A simple demo Postgres deployment.
+
+For a real cluster, use managed Postgres or a properly operated database, store credentials in Secrets, add persistent volumes, image publishing, namespace management, ingress, TLS, service accounts, network policies, and observability collector configuration.
+
+## Observability notes
+
+The service emits structured JSON logs to stdout. Each request gets a request ID from `x-request-id` or a generated UUID. The request ID is included in logs and response headers.
+
+OpenTelemetry instrumentation is enabled by default. FastAPI requests are instrumented, and custom spans are added around:
+
+- `job.create`
+- `job.process`
+- `evaluation.scoring`
+
+Span attributes include metadata such as `tenant_id`, `project_id`, `job_id`, and rubric presence. Full prompt, answer, and rubric content are not emitted into logs or traces by default because those fields may contain user data, business-sensitive data, or regulated content. A production system should make data capture explicit, governed, redacted, access-controlled, and auditable.
+
+Disable tracing locally with:
+
+```bash
+APP_OTEL_ENABLED=false uvicorn app.main:app --reload
+```
+
+## Security and governance notes
+
+This template intentionally leaves auth out of the first version. In a production version, auth should be added at the API boundary through FastAPI dependencies or middleware. Tenant and project authorization should be checked before creating or reading jobs.
+
+Recommended production additions:
+
+- Authentication and authorization.
+- Tenant-aware data isolation.
+- Audit logging to an append-only durable store.
+- Prompt/answer redaction or classification before optional logging.
+- Rate limits and request size limits.
+- Model provider allowlists and policy checks.
+- Secrets managed by the deployment platform, not source control.
+- SLOs for queue latency, provider latency, failure rate, and evaluation throughput.
+
+## Resilience and platform patterns
+
+`app/core/resilience.py` includes small timeout and retry helpers. The mock evaluator does not need them, but the evaluator service uses them to show where a real provider call would be protected.
+
+The boundaries are intentionally replaceable:
+
+- Replace `PostgresJobRepository` with DynamoDB, Redis, or another durable store if the workload requires it.
+- Replace `InMemoryJobQueue` with SQS, Kafka, Celery, Dramatiq, Arq, or another queue/worker system.
+- Replace `Evaluator.score` with a real provider adapter.
+- Replace `AuditRecorder` with a durable audit event writer.
+- Add auth/RBAC as dependencies on the route layer.
+
+## How this would evolve for production
+
+The next production-oriented iteration would add:
+
+1. Alembic migrations instead of startup schema creation.
+2. Durable queue with retry/dead-letter behavior.
+3. AuthN/AuthZ and tenant-aware access checks.
+4. Real model provider adapter with request budgets, rate-limit handling, and circuit breakers.
+5. Metrics export for queue depth, job latency, scoring latency, provider errors, and cost signals.
+6. Trace collector integration instead of console span export.
+7. CI pipeline running tests, linting, type checks, image build, and vulnerability scanning.
+8. Deployment overlays for local, staging, and production environments.
+9. Explicit prompt/answer retention policy and governance controls.
+
+## Interview framing
+
+This template is deliberately modest. The goal is to show judgment: clear seams, deterministic tests, observability, durable metadata, safe defaults, and deployment readiness without pretending that a starter service is a complete production platform.

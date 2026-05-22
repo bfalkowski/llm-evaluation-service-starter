@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+import logging
+from uuid import UUID, uuid4
+
+from app.core.audit import AuditRecorder
+from app.core.tracing import traced_span
+from app.domain.models import EvaluationJob, EvaluationRequest, JobStatus
+from app.services.evaluator import Evaluator
+from app.services.queue import InMemoryJobQueue
+from app.storage.base import JobRepository
+
+logger = logging.getLogger(__name__)
+
+
+class EvaluationJobService:
+    def __init__(
+        self,
+        repository: JobRepository,
+        queue: InMemoryJobQueue,
+        evaluator: Evaluator,
+        audit: AuditRecorder,
+    ) -> None:
+        self.repository = repository
+        self.queue = queue
+        self.evaluator = evaluator
+        self.audit = audit
+
+    async def submit(self, request: EvaluationRequest) -> EvaluationJob:
+        job = EvaluationJob(
+            job_id=uuid4(),
+            tenant_id=request.tenant_id,
+            project_id=request.project_id,
+            status=JobStatus.QUEUED,
+            request=request,
+        )
+        with traced_span("job.create", tenant_id=request.tenant_id, project_id=request.project_id, job_id=str(job.job_id)):
+            await self.repository.create(job)
+            await self.queue.enqueue(job.job_id)
+            self.audit.record(
+                event_type="evaluation.job_queued",
+                tenant_id=job.tenant_id,
+                project_id=job.project_id,
+                job_id=str(job.job_id),
+            )
+        return job
+
+    async def get(self, job_id: UUID) -> EvaluationJob:
+        return await self.repository.get(job_id)
+
+    async def process(self, job_id: UUID) -> None:
+        job = await self.repository.get(job_id)
+        with traced_span("job.process", tenant_id=job.tenant_id, project_id=job.project_id, job_id=str(job_id)):
+            try:
+                await self.repository.set_running(job_id)
+                self.audit.record(
+                    event_type="evaluation.job_running",
+                    tenant_id=job.tenant_id,
+                    project_id=job.project_id,
+                    job_id=str(job_id),
+                )
+                result = await self.evaluator.score(job.request)
+                updated = await self.repository.set_succeeded(job_id, result)
+                self.audit.record(
+                    event_type="evaluation.job_succeeded",
+                    tenant_id=updated.tenant_id,
+                    project_id=updated.project_id,
+                    job_id=str(job_id),
+                    score=result.score,
+                )
+                logger.info(
+                    "evaluation job succeeded",
+                    extra={
+                        "tenant_id": updated.tenant_id,
+                        "project_id": updated.project_id,
+                        "job_id": str(job_id),
+                    },
+                )
+            except Exception as exc:
+                await self.repository.set_failed(job_id, "Evaluation failed.")
+                self.audit.record(
+                    event_type="evaluation.job_failed",
+                    tenant_id=job.tenant_id,
+                    project_id=job.project_id,
+                    job_id=str(job_id),
+                )
+                logger.exception("evaluation job failed", extra={"job_id": str(job_id)})
+                raise exc
