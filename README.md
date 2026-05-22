@@ -4,12 +4,6 @@ A clean-room FastAPI starter for a small **LLM Evaluation Job Service**.
 
 This repository provides a small AI-adjacent platform service with clean API boundaries, typed domain models, deterministic tests, async job processing, structured logging, OpenTelemetry tracing, durable job metadata, and deployable local/runtime configuration. It does not require a real model provider, external queue, auth system, or observability backend.
 
-## Clean-room note
-
-This project is intentionally generic. It is not derived from employer code, proprietary package names, confidential architecture, internal APIs, private workflows, or company-specific implementation patterns.
-
-AI coding tools may have assisted with scaffolding. Review, testing, and adaptation are expected before using this as a starting point for a real service.
-
 ## Features
 
 - FastAPI service design with versioned evaluation endpoints.
