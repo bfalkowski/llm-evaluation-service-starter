@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +12,8 @@ class Settings(BaseSettings):
     environment: str = "local"
     log_level: str = "INFO"
     otel_enabled: bool = True
+    otel_exporter: Literal["console", "otlp", "none"] = "console"
+    otel_otlp_endpoint: str | None = None
     worker_poll_seconds: float = 0.05
     evaluator_timeout_seconds: float = 5.0
     storage_backend: str = "postgres"

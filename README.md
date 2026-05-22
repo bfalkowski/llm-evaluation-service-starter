@@ -55,6 +55,32 @@ deploy/
   k8s/                    Deployment, Service, ConfigMap, demo Postgres manifest
 ```
 
+```mermaid
+flowchart LR
+    client["API client"] --> api["FastAPI app<br/>request ID middleware<br/>error handlers"]
+    api --> routes["Evaluation routes<br/>POST /v1/evaluations<br/>GET /v1/evaluations/{job_id}"]
+    api --> health["Health routes<br/>/health/live<br/>/health/ready"]
+
+    routes --> service["Job service"]
+    service --> repo["Repository interface"]
+    repo --> postgres["PostgreSQL repository<br/>default runtime"]
+    repo --> memory["In-memory repository<br/>tests and demos"]
+
+    service --> queue["In-memory queue"]
+    queue --> worker["Background worker"]
+    worker --> evaluator["Mock evaluator"]
+    evaluator --> scoring["Deterministic scoring logic"]
+    worker --> repo
+
+    api -. "structured JSON logs" .-> logs["stdout logs"]
+    service -. "safe span attributes" .-> tracing["OpenTelemetry SDK"]
+    evaluator -. "safe span attributes" .-> tracing
+    tracing --> console["Console exporter"]
+    tracing --> collector["OTLP exporter<br/>OpenTelemetry Collector"]
+
+    audit["Audit recorder<br/>in-memory extension point"] -.-> service
+```
+
 The main flow is:
 
 1. `POST /v1/evaluations` validates the request.
@@ -224,10 +250,26 @@ OpenTelemetry instrumentation is enabled by default. FastAPI requests are instru
 
 Span attributes include metadata such as `tenant_id`, `project_id`, `job_id`, and rubric presence. Full prompt, answer, and rubric content are not emitted into logs or traces by default because those fields may contain user data, business-sensitive data, or regulated content. A production system should make data capture explicit, governed, redacted, access-controlled, and auditable.
 
+Tracing uses standard OpenTelemetry exporters rather than a custom exporter. The application owns meaningful span boundaries and safe attributes, while the deployment environment decides where telemetry goes.
+
+Supported exporter modes:
+
+```bash
+APP_OTEL_ENABLED=true
+APP_OTEL_EXPORTER=console  # console, otlp, or none
+APP_OTEL_OTLP_ENDPOINT=http://otel-collector:4317
+```
+
+Recommended usage:
+
+- `console` for local demos where visible spans are useful.
+- `none` for quieter local development.
+- `otlp` for deployment through an OpenTelemetry Collector to Jaeger, Tempo, Honeycomb, Datadog, New Relic, or another backend.
+
 Disable tracing locally with:
 
 ```bash
-APP_OTEL_ENABLED=false uvicorn app.main:app --reload
+APP_OTEL_EXPORTER=none uvicorn app.main:app --reload
 ```
 
 ## Security and governance notes

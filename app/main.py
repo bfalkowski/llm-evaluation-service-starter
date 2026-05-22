@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from fastapi import FastAPI, Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -83,7 +83,13 @@ def create_app() -> FastAPI:
     app.add_exception_handler(Exception, unhandled_error_handler)
     app.include_router(health_router)
     app.include_router(evaluation_router)
-    configure_tracing(app, settings.service_name, settings.otel_enabled)
+    configure_tracing(
+        app,
+        settings.service_name,
+        settings.otel_enabled,
+        settings.otel_exporter,
+        settings.otel_otlp_endpoint,
+    )
     return app
 
 

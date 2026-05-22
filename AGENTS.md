@@ -37,3 +37,5 @@ Guidance for AI coding agents working in this repository.
 - Real model provider: replace the mock operation in `services/evaluator.py`.
 - Auth/RBAC: add FastAPI dependencies at the API boundary.
 - Audit log: replace the in-memory audit recorder with a durable append-only store.
+
+- Do not add custom OpenTelemetry exporters unless there is a specific, documented need. Prefer standard console or OTLP export.
