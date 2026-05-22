@@ -1,16 +1,16 @@
 # llm-evaluation-service
 
-A clean-room, production-minded FastAPI starter for a small **LLM Evaluation Job Service**.
+A clean-room FastAPI starter for a small **LLM Evaluation Job Service**.
 
-This repository is intentionally small. It demonstrates how an AI-adjacent platform service can be structured around clean API boundaries, typed domain models, deterministic tests, async job processing, structured logging, OpenTelemetry tracing, durable job metadata, and deployability without requiring a real model provider, external queue, auth system, or observability backend.
+This repository provides a small AI-adjacent platform service with clean API boundaries, typed domain models, deterministic tests, async job processing, structured logging, OpenTelemetry tracing, durable job metadata, and deployable local/runtime configuration. It does not require a real model provider, external queue, auth system, or observability backend.
 
 ## Clean-room note
 
-This is a public portfolio project. It is not derived from employer code, proprietary package names, confidential architecture, internal APIs, private workflows, or company-specific implementation patterns.
+This project is intentionally generic. It is not derived from employer code, proprietary package names, confidential architecture, internal APIs, private workflows, or company-specific implementation patterns.
 
-AI coding tools may have been used to assist with scaffolding. Human review, simplification, testing, and refinement are expected before using this as a public portfolio artifact.
+AI coding tools may have assisted with scaffolding. Review, testing, and adaptation are expected before using this as a starting point for a real service.
 
-## What this repo demonstrates
+## Features
 
 - FastAPI service design with versioned evaluation endpoints.
 - Async job submission and processing through a replaceable in-memory queue abstraction.
@@ -23,7 +23,7 @@ AI coding tools may have been used to assist with scaffolding. Human review, sim
 - Unit and integration tests using pytest and FastAPI TestClient.
 - Dockerfile, docker-compose, and basic Kubernetes manifests with liveness/readiness probes.
 
-## What this intentionally does not do
+## Out of scope
 
 - No real model provider integration.
 - No durable external queue.
@@ -33,7 +33,7 @@ AI coding tools may have been used to assist with scaffolding. Human review, sim
 - No metrics backend or trace collector requirement.
 - No prompt/answer logging by default.
 
-These are omitted on purpose so the template stays focused and easy to adapt.
+These are left out so the service stays focused and easy to adapt.
 
 ## Architecture overview
 
@@ -107,7 +107,7 @@ For tests or very lightweight local experiments, you can switch to in-memory sto
 APP_STORAGE_BACKEND=memory uvicorn app.main:app --reload
 ```
 
-The Postgres repository creates its table on startup to keep this starter easy to run. A production version should replace that with Alembic migrations and a reviewed schema rollout process.
+The Postgres repository creates its table on startup to keep local setup simple. Production deployments should replace that with Alembic migrations and a reviewed schema rollout process.
 
 ## API examples
 
@@ -218,7 +218,7 @@ docker compose up --build
 
 ## Kubernetes notes
 
-The manifests in `deploy/k8s` are intentionally basic.
+The manifests in `deploy/k8s` are basic starting points.
 
 ```bash
 kubectl apply -f deploy/k8s/postgres.yaml
@@ -274,7 +274,7 @@ APP_OTEL_EXPORTER=none uvicorn app.main:app --reload
 
 ## Security and governance notes
 
-This template intentionally leaves auth out of the first version. In a production version, auth should be added at the API boundary through FastAPI dependencies or middleware. Tenant and project authorization should be checked before creating or reading jobs.
+Auth is outside the scope of this starter. Production deployments should add authentication at the API boundary through FastAPI dependencies or middleware. Tenant and project authorization should be checked before creating or reading jobs.
 
 Recommended production additions:
 
@@ -289,9 +289,9 @@ Recommended production additions:
 
 ## Resilience and platform patterns
 
-`app/core/resilience.py` includes small timeout and retry helpers. The mock evaluator does not need them, but the evaluator service uses them to show where a real provider call would be protected.
+`app/core/resilience.py` includes small timeout and retry helpers. The mock evaluator does not need them, but the evaluator service uses them in the same place a real provider call would be protected.
 
-The boundaries are intentionally replaceable:
+The main extension points are:
 
 - Replace `PostgresJobRepository` with DynamoDB, Redis, or another durable store if the workload requires it.
 - Replace `InMemoryJobQueue` with SQS, Kafka, Celery, Dramatiq, Arq, or another queue/worker system.
@@ -299,9 +299,9 @@ The boundaries are intentionally replaceable:
 - Replace `AuditRecorder` with a durable audit event writer.
 - Add auth/RBAC as dependencies on the route layer.
 
-## How this would evolve for production
+## Production Extensions
 
-The next production-oriented iteration would add:
+Common production additions include:
 
 1. Alembic migrations instead of startup schema creation.
 2. Durable queue with retry/dead-letter behavior.
