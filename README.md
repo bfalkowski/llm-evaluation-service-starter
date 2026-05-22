@@ -33,7 +33,7 @@ AI coding tools may have been used to assist with scaffolding. Human review, sim
 - No metrics backend or trace collector requirement.
 - No prompt/answer logging by default.
 
-These are omitted on purpose so the template stays understandable and easy to discuss in an interview.
+These are omitted on purpose so the template stays focused and easy to adapt.
 
 ## Architecture overview
 
@@ -312,7 +312,3 @@ The next production-oriented iteration would add:
 7. CI pipeline running tests, linting, type checks, image build, and vulnerability scanning.
 8. Deployment overlays for local, staging, and production environments.
 9. Explicit prompt/answer retention policy and governance controls.
-
-## Interview framing
-
-This template is deliberately modest. The goal is to show judgment: clear seams, deterministic tests, observability, durable metadata, safe defaults, and deployment readiness without pretending that a starter service is a complete production platform.
