@@ -192,6 +192,14 @@ Run linting:
 ruff check .
 ```
 
+Run type checks:
+
+```bash
+mypy app tests
+```
+
+GitHub Actions runs the same test, lint, and type-check commands on pushes to `main` and on pull requests.
+
 ## Docker
 
 Build and run directly against a reachable Postgres database:

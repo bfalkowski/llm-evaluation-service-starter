@@ -12,7 +12,7 @@ JobHandler = Callable[[UUID], Awaitable[None]]
 
 class InMemoryJobQueue:
     def __init__(self) -> None:
-        self._queue: asyncio.Queue[UUID] = asyncio.Queue()
+        self._queue: asyncio.Queue[UUID | None] = asyncio.Queue()
         self._task: asyncio.Task[None] | None = None
         self._stopping = asyncio.Event()
 
@@ -27,16 +27,15 @@ class InMemoryJobQueue:
     async def stop(self) -> None:
         self._stopping.set()
         if self._task:
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
+            await self._queue.put(None)
+            await self._task
 
     async def _run(self, handler: JobHandler) -> None:
         while not self._stopping.is_set():
             job_id = await self._queue.get()
             try:
+                if job_id is None:
+                    return
                 await handler(job_id)
             except Exception:
                 logger.exception("background job handler failed", extra={"job_id": str(job_id)})

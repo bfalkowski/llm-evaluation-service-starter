@@ -4,7 +4,7 @@ from app.domain.models import EvaluationRequest, EvaluationResult
 
 
 def score_mock_response(request: EvaluationRequest) -> EvaluationResult:
-    """Deterministic mock scoring for portfolio/demo use.
+    """Deterministic mock scoring for local evaluation jobs.
 
     This intentionally avoids calling a model provider. It rewards non-empty,
     reasonably complete answers and small rubric alignment signals.
@@ -23,12 +23,31 @@ def score_mock_response(request: EvaluationRequest) -> EvaluationResult:
         "Mock evaluation score based on answer length, question-term overlap, "
         "basic clarity signals, and optional rubric overlap."
     )
-    return EvaluationResult(score=score, justification=justification, rubric_used=request.rubric is not None)
+    return EvaluationResult(
+        score=score,
+        justification=justification,
+        rubric_used=request.rubric is not None,
+    )
 
 
 def _significant_terms(text: str) -> set[str]:
-    stop_words = {"the", "a", "an", "and", "or", "of", "to", "in", "is", "it", "for", "on", "with"}
-    return {token.lower().strip(".,!?;:()[]{}\"'") for token in text.split() if len(token) > 3} - stop_words
+    stop_words = {
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "of",
+        "to",
+        "in",
+        "is",
+        "it",
+        "for",
+        "on",
+        "with",
+    }
+    terms = {token.lower().strip(".,!?;:()[]{}\"'") for token in text.split() if len(token) > 3}
+    return terms - stop_words
 
 
 def _has_any_overlap(left: str, right: str) -> bool:

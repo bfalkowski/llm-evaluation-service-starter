@@ -37,14 +37,23 @@ class InMemoryJobRepository:
             return job
 
     async def set_failed(self, job_id: UUID, message: str) -> EvaluationJob:
-        job = await self._transition(job_id, {JobStatus.QUEUED, JobStatus.RUNNING}, JobStatus.FAILED)
+        job = await self._transition(
+            job_id,
+            {JobStatus.QUEUED, JobStatus.RUNNING},
+            JobStatus.FAILED,
+        )
         async with self._lock:
             job.error_message = message
             job.updated_at = datetime.now(UTC)
             self._jobs[job_id] = job
             return job
 
-    async def _transition(self, job_id: UUID, allowed_from: set[JobStatus], target: JobStatus) -> EvaluationJob:
+    async def _transition(
+        self,
+        job_id: UUID,
+        allowed_from: set[JobStatus],
+        target: JobStatus,
+    ) -> EvaluationJob:
         async with self._lock:
             job = self._jobs.get(job_id)
             if job is None:
@@ -56,6 +65,9 @@ class InMemoryJobRepository:
             job.updated_at = datetime.now(UTC)
             self._jobs[job_id] = job
             return job
+
+    async def health_check(self) -> bool:
+        return True
 
     async def close(self) -> None:
         return None

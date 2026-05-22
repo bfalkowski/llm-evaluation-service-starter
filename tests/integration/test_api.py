@@ -9,6 +9,20 @@ def test_health_endpoints() -> None:
         assert client.get("/health/ready").json() == {"status": "ready"}
 
 
+def test_readiness_reports_unhealthy_repository() -> None:
+    class UnhealthyRepository:
+        async def health_check(self) -> bool:
+            return False
+
+    app = create_app()
+    with TestClient(app) as client:
+        app.state.repository = UnhealthyRepository()
+        response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "not_ready"}
+
+
 def test_submit_and_get_evaluation() -> None:
     with TestClient(create_app()) as client:
         response = client.post(

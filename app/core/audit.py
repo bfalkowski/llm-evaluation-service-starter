@@ -22,7 +22,15 @@ class AuditRecorder:
     def __init__(self) -> None:
         self.events: list[AuditEvent] = []
 
-    def record(self, *, event_type: str, tenant_id: str, project_id: str, job_id: str, **metadata: Any) -> None:
+    def record(
+        self,
+        *,
+        event_type: str,
+        tenant_id: str,
+        project_id: str,
+        job_id: str,
+        **metadata: Any,
+    ) -> None:
         event = AuditEvent(
             event_type=event_type,
             tenant_id=tenant_id,

@@ -34,7 +34,12 @@ class EvaluationJobService:
             status=JobStatus.QUEUED,
             request=request,
         )
-        with traced_span("job.create", tenant_id=request.tenant_id, project_id=request.project_id, job_id=str(job.job_id)):
+        with traced_span(
+            "job.create",
+            tenant_id=request.tenant_id,
+            project_id=request.project_id,
+            job_id=str(job.job_id),
+        ):
             await self.repository.create(job)
             await self.queue.enqueue(job.job_id)
             self.audit.record(
@@ -50,7 +55,12 @@ class EvaluationJobService:
 
     async def process(self, job_id: UUID) -> None:
         job = await self.repository.get(job_id)
-        with traced_span("job.process", tenant_id=job.tenant_id, project_id=job.project_id, job_id=str(job_id)):
+        with traced_span(
+            "job.process",
+            tenant_id=job.tenant_id,
+            project_id=job.project_id,
+            job_id=str(job_id),
+        ):
             try:
                 await self.repository.set_running(job_id)
                 self.audit.record(
@@ -77,12 +87,26 @@ class EvaluationJobService:
                     },
                 )
             except Exception as exc:
-                await self.repository.set_failed(job_id, "Evaluation failed.")
-                self.audit.record(
-                    event_type="evaluation.job_failed",
-                    tenant_id=job.tenant_id,
-                    project_id=job.project_id,
-                    job_id=str(job_id),
-                )
+                await self._record_failure(job, "Evaluation failed.", exc)
                 logger.exception("evaluation job failed", extra={"job_id": str(job_id)})
-                raise exc
+                raise
+
+    async def _record_failure(
+        self,
+        job: EvaluationJob,
+        message: str,
+        original_error: Exception,
+    ) -> None:
+        try:
+            await self.repository.set_failed(job.job_id, message)
+            self.audit.record(
+                event_type="evaluation.job_failed",
+                tenant_id=job.tenant_id,
+                project_id=job.project_id,
+                job_id=str(job.job_id),
+            )
+        except Exception:
+            logger.exception(
+                "failed to persist evaluation job failure",
+                extra={"job_id": str(job.job_id), "original_error": repr(original_error)},
+            )

@@ -5,12 +5,13 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import Response
 
 from app.api.health import router as health_router
 from app.api.routes import router as evaluation_router
 from app.core.audit import AuditRecorder
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 from app.core.errors import AppError, app_error_handler, unhandled_error_handler
 from app.core.logging import configure_logging, new_request_id, request_id_var
 from app.core.tracing import configure_tracing
@@ -23,7 +24,7 @@ from app.storage.in_memory import InMemoryJobRepository
 logger = logging.getLogger(__name__)
 
 
-async def build_repository(settings) -> JobRepository:
+async def build_repository(settings: Settings) -> JobRepository:
     if settings.storage_backend == "memory":
         return InMemoryJobRepository()
     if settings.storage_backend == "postgres":
@@ -36,7 +37,7 @@ async def build_repository(settings) -> JobRepository:
 
 
 class RequestIdMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request_id = request.headers.get("x-request-id", new_request_id())
         request.state.request_id = request_id
         token = request_id_var.set(request_id)
@@ -79,7 +80,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="LLM Evaluation Service", version="0.1.0", lifespan=lifespan)
     app.add_middleware(RequestIdMiddleware)
-    app.add_exception_handler(AppError, app_error_handler)
+    app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
     app.add_exception_handler(Exception, unhandled_error_handler)
     app.include_router(health_router)
     app.include_router(evaluation_router)

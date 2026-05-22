@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Request, status
@@ -11,7 +12,7 @@ router = APIRouter(prefix="/v1", tags=["evaluations"])
 
 
 def get_job_service(request: Request) -> EvaluationJobService:
-    return request.app.state.job_service
+    return cast(EvaluationJobService, request.app.state.job_service)
 
 
 @router.post("/evaluations", status_code=status.HTTP_202_ACCEPTED)

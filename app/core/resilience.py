@@ -2,16 +2,13 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from typing import TypeVar
-
-T = TypeVar("T")
 
 
-async def with_timeout(operation: Awaitable[T], timeout_seconds: float) -> T:
+async def with_timeout[T](operation: Awaitable[T], timeout_seconds: float) -> T:
     return await asyncio.wait_for(operation, timeout=timeout_seconds)
 
 
-async def retry_async(
+async def retry_async[T](
     operation: Callable[[], Awaitable[T]],
     *,
     attempts: int = 3,

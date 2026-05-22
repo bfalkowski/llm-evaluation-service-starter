@@ -1,6 +1,7 @@
 import pytest
 
 from app.core.audit import AuditRecorder
+from app.core.errors import InvalidStateTransitionError
 from app.domain.models import EvaluationRequest, JobStatus
 from app.services.evaluator import Evaluator
 from app.services.job_service import EvaluationJobService
@@ -23,7 +24,8 @@ async def test_job_state_transitions_to_succeeded() -> None:
     job = await service.submit(request)
     assert job.status == JobStatus.QUEUED
 
-    queued_job_id = await queue._queue.get()  # Small white-box assertion for this in-memory adapter.
+    queued_job_id = await queue._queue.get()
+    assert queued_job_id is not None
     await service.process(queued_job_id)
     updated = await service.get(job.job_id)
 
@@ -48,5 +50,5 @@ async def test_repository_rejects_invalid_transition() -> None:
 
     await repo.set_running(job.job_id)
 
-    with pytest.raises(Exception):
+    with pytest.raises(InvalidStateTransitionError):
         await repo.set_running(job.job_id)

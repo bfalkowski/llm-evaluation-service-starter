@@ -24,4 +24,7 @@ class Evaluator:
             project_id=request.project_id,
             rubric_present=request.rubric is not None,
         ):
-            return await retry_async(lambda: with_timeout(operation(), self.timeout_seconds), attempts=2)
+            return await retry_async(
+                lambda: with_timeout(operation(), self.timeout_seconds),
+                attempts=2,
+            )

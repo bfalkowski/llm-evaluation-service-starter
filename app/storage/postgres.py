@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PostgresUUID
+from sqlalchemy import DateTime, String, Text, text
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -23,8 +26,8 @@ class EvaluationJobRow(Base):
     tenant_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     project_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
-    request_payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    result_payload: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    request_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    result_payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -83,6 +86,14 @@ class PostgresJobRepository:
             await session.commit()
             await session.refresh(row)
             return self._to_domain(row)
+
+    async def health_check(self) -> bool:
+        try:
+            async with self._sessionmaker() as session:
+                await session.execute(text("SELECT 1"))
+            return True
+        except SQLAlchemyError:
+            return False
 
     async def _transition(
         self,
