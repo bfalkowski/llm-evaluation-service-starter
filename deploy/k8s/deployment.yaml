@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
         - name: service
-          image: llm-evaluation-service:latest
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/bfalkowski/llm-evaluation-service-starter:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           envFrom:
