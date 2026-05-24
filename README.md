@@ -150,6 +150,18 @@ curl -s http://localhost:8000/health/live
 curl -s http://localhost:8000/health/ready
 ```
 
+Swagger UI is available while the service is running:
+
+```text
+http://localhost:8000/docs
+```
+
+Export the OpenAPI spec:
+
+```bash
+python scripts/export_openapi.py
+```
+
 ## Local development
 
 Create a virtual environment and install dependencies:

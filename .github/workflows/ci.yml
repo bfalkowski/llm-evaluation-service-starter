@@ -39,6 +39,12 @@ jobs:
       - name: Run mypy
         run: mypy app tests
 
+      - name: Export OpenAPI spec
+        run: python scripts/export_openapi.py
+
+      - name: Check OpenAPI spec is current
+        run: git diff --exit-code openapi/openapi.json
+
       - name: Build package
         run: python -m build
 
