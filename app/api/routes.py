@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Request, status
 
-from app.domain.models import EvaluationRequest
+from app.domain.models import EvaluationJobResponse, EvaluationRequest, SubmitEvaluationResponse
 from app.services.job_service import EvaluationJobService
 
 router = APIRouter(prefix="/v1", tags=["evaluations"])
@@ -15,21 +15,26 @@ def get_job_service(request: Request) -> EvaluationJobService:
     return cast(EvaluationJobService, request.app.state.job_service)
 
 
-@router.post("/evaluations", status_code=status.HTTP_202_ACCEPTED)
-async def submit_evaluation(payload: EvaluationRequest, request: Request) -> dict[str, object]:
+@router.post(
+    "/evaluations",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=SubmitEvaluationResponse,
+)
+async def submit_evaluation(
+    payload: EvaluationRequest,
+    request: Request,
+) -> SubmitEvaluationResponse:
     service = get_job_service(request)
     job = await service.submit(payload)
-    return {
-        "job_id": str(job.job_id),
-        "status": job.status,
-        "request_id": request.state.request_id,
-    }
+    return SubmitEvaluationResponse(
+        job_id=job.job_id,
+        status=job.status,
+        request_id=request.state.request_id,
+    )
 
 
-@router.get("/evaluations/{job_id}")
-async def get_evaluation(job_id: UUID, request: Request) -> dict[str, object]:
+@router.get("/evaluations/{job_id}", response_model=EvaluationJobResponse)
+async def get_evaluation(job_id: UUID, request: Request) -> EvaluationJobResponse:
     service = get_job_service(request)
     job = await service.get(job_id)
-    response = job.public_dict()
-    response["request_id"] = request.state.request_id
-    return response
+    return job.to_response(request.state.request_id)

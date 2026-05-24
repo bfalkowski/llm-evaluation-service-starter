@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -29,6 +28,31 @@ class EvaluationResult(BaseModel):
     rubric_used: bool
 
 
+class EvaluationRequestSummary(BaseModel):
+    tenant_id: str
+    project_id: str
+    rubric: str | None = None
+
+
+class SubmitEvaluationResponse(BaseModel):
+    job_id: UUID
+    status: JobStatus
+    request_id: str
+
+
+class EvaluationJobResponse(BaseModel):
+    job_id: UUID
+    tenant_id: str
+    project_id: str
+    status: JobStatus
+    request: EvaluationRequestSummary
+    result: EvaluationResult | None = None
+    error_message: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    request_id: str
+
+
 class EvaluationJob(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
@@ -42,10 +66,11 @@ class EvaluationJob(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    def public_dict(self) -> dict[str, Any]:
+    def to_response(self, request_id: str) -> EvaluationJobResponse:
         # Avoid returning the full prompt/answer in status responses by default.
         data = self.model_dump(exclude={"request": {"question", "answer"}})
-        return data
+        data["request_id"] = request_id
+        return EvaluationJobResponse.model_validate(data)
 
 
 class ErrorResponse(BaseModel):

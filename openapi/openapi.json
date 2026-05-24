@@ -1,6 +1,76 @@
 {
   "components": {
     "schemas": {
+      "EvaluationJobResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "request": {
+            "$ref": "#/components/schemas/EvaluationRequestSummary"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "tenant_id",
+          "project_id",
+          "status",
+          "request",
+          "created_at",
+          "updated_at",
+          "request_id"
+        ],
+        "title": "EvaluationJobResponse",
+        "type": "object"
+      },
       "EvaluationRequest": {
         "properties": {
           "answer": {
@@ -49,6 +119,60 @@
         "title": "EvaluationRequest",
         "type": "object"
       },
+      "EvaluationRequestSummary": {
+        "properties": {
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "rubric": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rubric"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "project_id"
+        ],
+        "title": "EvaluationRequestSummary",
+        "type": "object"
+      },
+      "EvaluationResult": {
+        "properties": {
+          "justification": {
+            "title": "Justification",
+            "type": "string"
+          },
+          "rubric_used": {
+            "title": "Rubric Used",
+            "type": "boolean"
+          },
+          "score": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "score",
+          "justification",
+          "rubric_used"
+        ],
+        "title": "EvaluationResult",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -60,6 +184,39 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "JobStatus": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed"
+        ],
+        "title": "JobStatus",
+        "type": "string"
+      },
+      "SubmitEvaluationResponse": {
+        "properties": {
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "request_id"
+        ],
+        "title": "SubmitEvaluationResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -172,9 +329,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Submit Evaluation V1 Evaluations Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/SubmitEvaluationResponse"
                 }
               }
             },
@@ -217,9 +372,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Evaluation V1 Evaluations  Job Id  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/EvaluationJobResponse"
                 }
               }
             },
