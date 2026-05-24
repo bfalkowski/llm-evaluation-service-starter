@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     evaluator_timeout_seconds: float = 5.0
     storage_backend: str = "postgres"
     database_url: str = "postgresql+asyncpg://app:app@localhost:5432/llm_evaluations"
+    rate_limit_enabled: bool = True
+    rate_limit_submit_per_minute: int = 30
+    rate_limit_read_per_minute: int = 120
+    rate_limit_list_per_minute: int = 60
 
 
 def get_settings() -> Settings:

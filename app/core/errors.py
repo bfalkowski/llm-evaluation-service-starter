@@ -26,6 +26,12 @@ class InvalidStateTransitionError(AppError):
     public_message = "The requested state transition is not allowed."
 
 
+class RateLimitExceededError(AppError):
+    status_code = 429
+    code = "rate_limit_exceeded"
+    public_message = "Too many requests. Please try again later."
+
+
 def error_response(request_id: str, status_code: int, code: str, message: str) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,

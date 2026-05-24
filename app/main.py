@@ -15,6 +15,7 @@ from app.core.audit import AuditRecorder
 from app.core.config import Settings, get_settings
 from app.core.errors import AppError, app_error_handler, unhandled_error_handler
 from app.core.logging import configure_logging, new_request_id, request_id_var
+from app.core.rate_limit import InMemoryRateLimiter
 from app.core.tracing import configure_tracing
 from app.services.evaluator import Evaluator
 from app.services.job_service import EvaluationJobService
@@ -59,12 +60,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     queue = InMemoryJobQueue()
     evaluator = Evaluator(timeout_seconds=settings.evaluator_timeout_seconds)
     audit = AuditRecorder()
+    rate_limiter = InMemoryRateLimiter()
     job_service = EvaluationJobService(repository, queue, evaluator, audit)
 
     app.state.repository = repository
     app.state.queue = queue
     app.state.evaluator = evaluator
     app.state.audit = audit
+    app.state.rate_limiter = rate_limiter
     app.state.job_service = job_service
 
     queue.start(job_service.process)

@@ -198,6 +198,15 @@ Allow a local dashboard to call the API:
 APP_CORS_ALLOWED_ORIGINS='["http://localhost:5173","http://localhost:3000"]'
 ```
 
+Configure local rate limits:
+
+```bash
+APP_RATE_LIMIT_ENABLED=true
+APP_RATE_LIMIT_SUBMIT_PER_MINUTE=30
+APP_RATE_LIMIT_READ_PER_MINUTE=120
+APP_RATE_LIMIT_LIST_PER_MINUTE=60
+```
+
 Run tests:
 
 ```bash
@@ -295,6 +304,8 @@ APP_OTEL_EXPORTER=none uvicorn app.main:app --reload
 ## Security and governance notes
 
 Auth is outside the scope of this starter. Production deployments should add authentication at the API boundary through FastAPI dependencies or middleware. Tenant and project authorization should be checked before creating or reading jobs.
+
+The service includes a small in-memory fixed-window rate limiter for local development and single-process demos. It protects job submission, job reads, and job listing with separate configurable limits. Production deployments should enforce shared rate limits at the API gateway, ingress, or with a shared backend such as Redis so limits apply consistently across replicas.
 
 Recommended production additions:
 

@@ -1,5 +1,6 @@
 from typing import cast
 
+from _pytest.monkeypatch import MonkeyPatch
 from fastapi.testclient import TestClient
 
 from app.main import create_app
@@ -31,6 +32,14 @@ def test_health_endpoints() -> None:
     with TestClient(create_app()) as client:
         assert client.get("/health/live").json() == {"status": "ok"}
         assert client.get("/health/ready").json() == {"status": "ready"}
+
+
+def test_health_endpoints_are_not_rate_limited(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_RATE_LIMIT_SUBMIT_PER_MINUTE", "1")
+    with TestClient(create_app()) as client:
+        for _ in range(3):
+            assert client.get("/health/live").status_code == 200
+            assert client.get("/health/ready").status_code == 200
 
 
 def test_readiness_reports_unhealthy_repository() -> None:
@@ -155,6 +164,48 @@ def test_list_evaluations_rejects_invalid_limit() -> None:
         response = client.get("/v1/evaluations?limit=101")
 
     assert response.status_code == 422
+
+
+def test_submit_evaluation_rate_limit_returns_429(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_RATE_LIMIT_SUBMIT_PER_MINUTE", "1")
+    with TestClient(create_app()) as client:
+        first = submit_evaluation(client, tenant_id="tenant-a", project_id="project-a")
+        second_response = client.post(
+            "/v1/evaluations",
+            json={
+                "tenant_id": "tenant-a",
+                "project_id": "project-a",
+                "question": "Why use OpenTelemetry?",
+                "answer": "OpenTelemetry helps collect traces.",
+            },
+        )
+
+    assert first["status"] == "queued"
+    assert second_response.status_code == 429
+    body = second_response.json()
+    assert body["error"]["code"] == "rate_limit_exceeded"
+    assert "request_id" in body["error"]
+
+
+def test_rate_limit_can_be_disabled(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_RATE_LIMIT_ENABLED", "false")
+    monkeypatch.setenv("APP_RATE_LIMIT_SUBMIT_PER_MINUTE", "1")
+    with TestClient(create_app()) as client:
+        first = submit_evaluation(client, tenant_id="tenant-a", project_id="project-a")
+        second = submit_evaluation(client, tenant_id="tenant-a", project_id="project-a")
+
+    assert first["status"] == "queued"
+    assert second["status"] == "queued"
+
+
+def test_list_evaluations_rate_limit_returns_429(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_RATE_LIMIT_LIST_PER_MINUTE", "1")
+    with TestClient(create_app()) as client:
+        first_response = client.get("/v1/evaluations?tenant_id=tenant-a")
+        second_response = client.get("/v1/evaluations?tenant_id=tenant-a")
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 429
 
 
 def test_get_missing_evaluation_returns_consistent_error() -> None:
