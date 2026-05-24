@@ -254,6 +254,8 @@ docker compose up --build
 ## Kubernetes notes
 
 The manifests in `deploy/k8s` are basic starting points.
+See `deploy/k8s/README.md` for local Kubernetes setup, image options, port-forwarding,
+and cleanup commands.
 
 ```bash
 cp deploy/k8s/secret.example.yaml deploy/k8s/secret.local.yaml
