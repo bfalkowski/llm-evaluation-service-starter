@@ -8,6 +8,12 @@ Guidance for AI coding agents working in this repository.
 - Keep the project generic and suitable for a public GitHub portfolio repository.
 - Do not introduce secrets, credentials, API keys, private URLs, or private dataset references.
 
+## Local planning context
+
+- If `.local/PROJECT_WORKING_CONTEXT.md` exists, read it before planning substantial changes.
+- Treat `.local/` as private workspace context. Do not commit it, copy it into public docs, include it in Docker build contexts, or quote it in public-facing project materials.
+- Public repository files should stand on their own. Local notes can guide priorities, but implementation and docs should remain generic and clean-room safe.
+
 ## Coding style
 
 - Keep code simple, typed, and explicit.
