@@ -5,11 +5,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
-COPY app ./app
+RUN addgroup --system app \
+    && adduser --system --ingroup app --home /app app
+
+COPY --chown=app:app pyproject.toml README.md ./
+COPY --chown=app:app app ./app
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir .
+
+USER app
 
 EXPOSE 8000
 
