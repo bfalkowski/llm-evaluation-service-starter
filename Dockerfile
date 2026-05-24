@@ -1,5 +1,9 @@
 FROM python:3.12-slim AS runtime
 
+LABEL org.opencontainers.image.title="llm-evaluation-service" \
+      org.opencontainers.image.description="FastAPI service for asynchronous LLM evaluation jobs" \
+      org.opencontainers.image.source="https://github.com/bfalkowski/llm-evaluation-service-starter"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 

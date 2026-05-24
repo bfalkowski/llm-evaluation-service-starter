@@ -96,15 +96,23 @@ jobs:
       - tests
       - static-checks
 
-    env:
-      IMAGE_NAME: ghcr.io/${{ github.repository }}
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Build Docker image
-        run: docker build -t llm-evaluation-service:ci .
+      - name: Generate image metadata
+        id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          flavor: |
+            latest=false
+          tags: |
+            type=sha,prefix=,format=long
+            type=raw,value=latest,enable=${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          labels: |
+            org.opencontainers.image.title=llm-evaluation-service
+            org.opencontainers.image.description=FastAPI service for asynchronous LLM evaluation jobs
 
       - name: Log in to GitHub Container Registry
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -114,13 +122,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Publish Docker image
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          docker tag llm-evaluation-service:ci "${IMAGE_NAME}:${GITHUB_SHA}"
-          docker tag llm-evaluation-service:ci "${IMAGE_NAME}:latest"
-          docker push "${IMAGE_NAME}:${GITHUB_SHA}"
-          docker push "${IMAGE_NAME}:latest"
+      - name: Build and optionally publish Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
 
   deployment-checks:
     name: Deployment checks
