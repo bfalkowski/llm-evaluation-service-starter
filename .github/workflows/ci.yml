@@ -106,4 +106,4 @@ jobs:
         uses: azure/setup-kubectl@v4
 
       - name: Validate Kubernetes manifests
-        run: kubectl apply --dry-run=client --validate=false -f deploy/k8s/
+        run: python scripts/validate_k8s_manifests.py
