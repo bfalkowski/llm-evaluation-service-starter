@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Request, status
 
 from app.core.config import get_settings
+from app.core.errors import BadRequestError
 from app.core.rate_limit import InMemoryRateLimiter, client_key
 from app.domain.models import (
     EvaluationJobResponse,
@@ -69,6 +70,9 @@ async def list_evaluations(
     project_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> EvaluationListResponse:
+    if tenant_id is None:
+        raise BadRequestError("tenant_id is required.")
+
     settings = get_settings()
     check_rate_limit(
         request,
@@ -86,12 +90,17 @@ async def list_evaluations(
 
 @router.get("/evaluations/{job_id}", response_model=EvaluationJobResponse)
 async def get_evaluation(job_id: UUID, request: Request) -> EvaluationJobResponse:
+    tenant_id = request.query_params.get("tenant_id")
+    if tenant_id is None:
+        raise BadRequestError("tenant_id is required.")
+
     settings = get_settings()
     check_rate_limit(
         request,
         route_name="get_evaluation",
         limit=settings.rate_limit_read_per_minute,
+        tenant_id=tenant_id,
     )
     service = get_job_service(request)
-    job = await service.get(job_id)
+    job = await service.get_for_tenant(job_id, tenant_id)
     return job.to_response(request.state.request_id)

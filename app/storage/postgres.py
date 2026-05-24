@@ -58,18 +58,30 @@ class PostgresJobRepository:
                 raise NotFoundError()
             return self._to_domain(row)
 
+    async def get_for_tenant(self, job_id: UUID, tenant_id: str) -> EvaluationJob:
+        statement = select(EvaluationJobRow).where(
+            EvaluationJobRow.job_id == job_id,
+            EvaluationJobRow.tenant_id == tenant_id,
+        )
+        async with self._sessionmaker() as session:
+            row = await session.scalar(statement)
+            if row is None:
+                raise NotFoundError()
+            return self._to_domain(row)
+
     async def list_recent(
         self,
         *,
-        tenant_id: str | None = None,
+        tenant_id: str,
         project_id: str | None = None,
         limit: int = 50,
     ) -> list[EvaluationJob]:
         statement: Select[tuple[EvaluationJobRow]] = (
-            select(EvaluationJobRow).order_by(EvaluationJobRow.created_at.desc()).limit(limit)
+            select(EvaluationJobRow)
+            .where(EvaluationJobRow.tenant_id == tenant_id)
+            .order_by(EvaluationJobRow.created_at.desc())
+            .limit(limit)
         )
-        if tenant_id is not None:
-            statement = statement.where(EvaluationJobRow.tenant_id == tenant_id)
         if project_id is not None:
             statement = statement.where(EvaluationJobRow.project_id == project_id)
 

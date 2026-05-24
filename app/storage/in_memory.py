@@ -25,18 +25,23 @@ class InMemoryJobRepository:
             except KeyError as exc:
                 raise NotFoundError() from exc
 
+    async def get_for_tenant(self, job_id: UUID, tenant_id: str) -> EvaluationJob:
+        job = await self.get(job_id)
+        if job.tenant_id != tenant_id:
+            raise NotFoundError()
+        return job
+
     async def list_recent(
         self,
         *,
-        tenant_id: str | None = None,
+        tenant_id: str,
         project_id: str | None = None,
         limit: int = 50,
     ) -> list[EvaluationJob]:
         async with self._lock:
             jobs = list(self._jobs.values())
 
-        if tenant_id is not None:
-            jobs = [job for job in jobs if job.tenant_id == tenant_id]
+        jobs = [job for job in jobs if job.tenant_id == tenant_id]
         if project_id is not None:
             jobs = [job for job in jobs if job.project_id == project_id]
 

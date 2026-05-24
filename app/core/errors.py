@@ -20,6 +20,12 @@ class NotFoundError(AppError):
     public_message = "The requested resource was not found."
 
 
+class BadRequestError(AppError):
+    status_code = 400
+    code = "bad_request"
+    public_message = "The request is invalid."
+
+
 class InvalidStateTransitionError(AppError):
     status_code = 409
     code = "invalid_state_transition"

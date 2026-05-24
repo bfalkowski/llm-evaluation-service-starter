@@ -140,7 +140,13 @@ Example response:
 Retrieve a job:
 
 ```bash
-curl -s http://localhost:8000/v1/evaluations/<job_id>
+curl -s 'http://localhost:8000/v1/evaluations/<job_id>?tenant_id=tenant-a'
+```
+
+List recent jobs for a tenant:
+
+```bash
+curl -s 'http://localhost:8000/v1/evaluations?tenant_id=tenant-a&limit=20'
 ```
 
 Health checks:
@@ -304,6 +310,8 @@ APP_OTEL_EXPORTER=none uvicorn app.main:app --reload
 ## Security and governance notes
 
 Auth is outside the scope of this starter. Production deployments should add authentication at the API boundary through FastAPI dependencies or middleware. Tenant and project authorization should be checked before creating or reading jobs.
+
+External read endpoints require tenant context and return `404` for cross-tenant job lookups. This is an application-level guard for the starter, not a replacement for production authentication, authorization, or database-level isolation. Production deployments should derive tenant context from auth claims and may add Postgres Row-Level Security or equivalent database controls.
 
 The service includes a small in-memory fixed-window rate limiter for local development and single-process demos. It protects job submission, job reads, and job listing with separate configurable limits. Production deployments should enforce shared rate limits at the API gateway, ingress, or with a shared backend such as Redis so limits apply consistently across replicas.
 

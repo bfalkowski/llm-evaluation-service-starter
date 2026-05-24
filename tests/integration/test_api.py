@@ -110,7 +110,10 @@ def test_submit_and_get_evaluation() -> None:
 
         status_body = None
         for _ in range(20):
-            status_response = client.get(f"/v1/evaluations/{body['job_id']}")
+            status_response = client.get(
+                f"/v1/evaluations/{body['job_id']}",
+                params={"tenant_id": "tenant-a"},
+            )
             assert status_response.status_code == 200
             status_body = status_response.json()
             if status_body["status"] == "succeeded":
@@ -161,9 +164,18 @@ def test_list_evaluations_filters_by_project_and_limit() -> None:
 
 def test_list_evaluations_rejects_invalid_limit() -> None:
     with TestClient(create_app()) as client:
-        response = client.get("/v1/evaluations?limit=101")
+        response = client.get("/v1/evaluations?tenant_id=tenant-a&limit=101")
 
     assert response.status_code == 422
+
+
+def test_list_evaluations_requires_tenant_id() -> None:
+    with TestClient(create_app()) as client:
+        response = client.get("/v1/evaluations")
+
+    assert response.status_code == 400
+    body = response.json()
+    assert body["error"]["code"] == "bad_request"
 
 
 def test_submit_evaluation_rate_limit_returns_429(monkeypatch: MonkeyPatch) -> None:
@@ -210,12 +222,36 @@ def test_list_evaluations_rate_limit_returns_429(monkeypatch: MonkeyPatch) -> No
 
 def test_get_missing_evaluation_returns_consistent_error() -> None:
     with TestClient(create_app()) as client:
-        response = client.get("/v1/evaluations/00000000-0000-0000-0000-000000000000")
+        response = client.get(
+            "/v1/evaluations/00000000-0000-0000-0000-000000000000",
+            params={"tenant_id": "tenant-a"},
+        )
 
     assert response.status_code == 404
     body = response.json()
     assert body["error"]["code"] == "not_found"
     assert "request_id" in body["error"]
+
+
+def test_get_evaluation_requires_tenant_id() -> None:
+    with TestClient(create_app()) as client:
+        job = submit_evaluation(client, tenant_id="tenant-a", project_id="project-a")
+        response = client.get(f"/v1/evaluations/{job['job_id']}")
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "bad_request"
+
+
+def test_get_evaluation_hides_cross_tenant_job() -> None:
+    with TestClient(create_app()) as client:
+        job = submit_evaluation(client, tenant_id="tenant-a", project_id="project-a")
+        response = client.get(
+            f"/v1/evaluations/{job['job_id']}",
+            params={"tenant_id": "tenant-b"},
+        )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "not_found"
 
 
 def test_validation_error_is_deterministic() -> None:

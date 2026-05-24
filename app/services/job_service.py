@@ -53,10 +53,13 @@ class EvaluationJobService:
     async def get(self, job_id: UUID) -> EvaluationJob:
         return await self.repository.get(job_id)
 
+    async def get_for_tenant(self, job_id: UUID, tenant_id: str) -> EvaluationJob:
+        return await self.repository.get_for_tenant(job_id, tenant_id)
+
     async def list_recent(
         self,
         *,
-        tenant_id: str | None = None,
+        tenant_id: str,
         project_id: str | None = None,
         limit: int = 50,
     ) -> list[EvaluationJob]:
