@@ -23,6 +23,38 @@ def test_readiness_reports_unhealthy_repository() -> None:
     assert response.json() == {"status": "not_ready"}
 
 
+def test_cors_allows_local_dashboard_origin() -> None:
+    with TestClient(create_app()) as client:
+        response = client.options(
+            "/v1/evaluations",
+            headers={
+                "origin": "http://localhost:5173",
+                "access-control-request-method": "POST",
+                "access-control-request-headers": "content-type,x-request-id",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert "POST" in response.headers["access-control-allow-methods"]
+    assert "content-type" in response.headers["access-control-allow-headers"].lower()
+    assert "x-request-id" in response.headers["access-control-allow-headers"].lower()
+
+
+def test_cors_rejects_unknown_origin() -> None:
+    with TestClient(create_app()) as client:
+        response = client.options(
+            "/v1/evaluations",
+            headers={
+                "origin": "https://example.com",
+                "access-control-request-method": "POST",
+            },
+        )
+
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
+
+
 def test_submit_and_get_evaluation() -> None:
     with TestClient(create_app()) as client:
         response = client.post(

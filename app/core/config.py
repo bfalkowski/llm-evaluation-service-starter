@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     service_name: str = "llm-evaluation-service"
     environment: str = "local"
     log_level: str = "INFO"
+    cors_allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
     otel_enabled: bool = True
     otel_exporter: Literal["console", "otlp", "none"] = "console"
     otel_otlp_endpoint: str | None = None

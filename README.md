@@ -192,6 +192,12 @@ Run the service without Postgres:
 APP_STORAGE_BACKEND=memory uvicorn app.main:app --reload
 ```
 
+Allow a local dashboard to call the API:
+
+```bash
+APP_CORS_ALLOWED_ORIGINS='["http://localhost:5173","http://localhost:3000"]'
+```
+
 Run tests:
 
 ```bash
