@@ -11,6 +11,14 @@ class JobRepository(Protocol):
 
     async def get(self, job_id: UUID) -> EvaluationJob: ...
 
+    async def list_recent(
+        self,
+        *,
+        tenant_id: str | None = None,
+        project_id: str | None = None,
+        limit: int = 50,
+    ) -> list[EvaluationJob]: ...
+
     async def set_running(self, job_id: UUID) -> EvaluationJob: ...
 
     async def set_succeeded(self, job_id: UUID, result: EvaluationResult) -> EvaluationJob: ...

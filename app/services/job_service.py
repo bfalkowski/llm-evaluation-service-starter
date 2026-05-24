@@ -53,6 +53,19 @@ class EvaluationJobService:
     async def get(self, job_id: UUID) -> EvaluationJob:
         return await self.repository.get(job_id)
 
+    async def list_recent(
+        self,
+        *,
+        tenant_id: str | None = None,
+        project_id: str | None = None,
+        limit: int = 50,
+    ) -> list[EvaluationJob]:
+        return await self.repository.list_recent(
+            tenant_id=tenant_id,
+            project_id=project_id,
+            limit=limit,
+        )
+
     async def process(self, job_id: UUID) -> None:
         job = await self.repository.get(job_id)
         with traced_span(

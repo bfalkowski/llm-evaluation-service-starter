@@ -25,6 +25,23 @@ class InMemoryJobRepository:
             except KeyError as exc:
                 raise NotFoundError() from exc
 
+    async def list_recent(
+        self,
+        *,
+        tenant_id: str | None = None,
+        project_id: str | None = None,
+        limit: int = 50,
+    ) -> list[EvaluationJob]:
+        async with self._lock:
+            jobs = list(self._jobs.values())
+
+        if tenant_id is not None:
+            jobs = [job for job in jobs if job.tenant_id == tenant_id]
+        if project_id is not None:
+            jobs = [job for job in jobs if job.project_id == project_id]
+
+        return sorted(jobs, key=lambda job: job.created_at, reverse=True)[:limit]
+
     async def set_running(self, job_id: UUID) -> EvaluationJob:
         return await self._transition(job_id, {JobStatus.QUEUED}, JobStatus.RUNNING)
 

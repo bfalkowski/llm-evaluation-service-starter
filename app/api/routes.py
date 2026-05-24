@@ -1,11 +1,16 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import Annotated, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Request, status
+from fastapi import APIRouter, Query, Request, status
 
-from app.domain.models import EvaluationJobResponse, EvaluationRequest, SubmitEvaluationResponse
+from app.domain.models import (
+    EvaluationJobResponse,
+    EvaluationListResponse,
+    EvaluationRequest,
+    SubmitEvaluationResponse,
+)
 from app.services.job_service import EvaluationJobService
 
 router = APIRouter(prefix="/v1", tags=["evaluations"])
@@ -29,6 +34,21 @@ async def submit_evaluation(
     return SubmitEvaluationResponse(
         job_id=job.job_id,
         status=job.status,
+        request_id=request.state.request_id,
+    )
+
+
+@router.get("/evaluations", response_model=EvaluationListResponse)
+async def list_evaluations(
+    request: Request,
+    tenant_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    project_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> EvaluationListResponse:
+    service = get_job_service(request)
+    jobs = await service.list_recent(tenant_id=tenant_id, project_id=project_id, limit=limit)
+    return EvaluationListResponse(
+        jobs=[job.to_summary() for job in jobs],
         request_id=request.state.request_id,
     )
 

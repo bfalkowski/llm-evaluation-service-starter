@@ -53,6 +53,22 @@ class EvaluationJobResponse(BaseModel):
     request_id: str
 
 
+class EvaluationJobSummary(BaseModel):
+    job_id: UUID
+    tenant_id: str
+    project_id: str
+    status: JobStatus
+    result: EvaluationResult | None = None
+    error_message: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class EvaluationListResponse(BaseModel):
+    jobs: list[EvaluationJobSummary]
+    request_id: str
+
+
 class EvaluationJob(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
@@ -71,6 +87,11 @@ class EvaluationJob(BaseModel):
         data = self.model_dump(exclude={"request": {"question", "answer"}})
         data["request_id"] = request_id
         return EvaluationJobResponse.model_validate(data)
+
+    def to_summary(self) -> EvaluationJobSummary:
+        return EvaluationJobSummary.model_validate(
+            self.model_dump(exclude={"request"}),
+        )
 
 
 class ErrorResponse(BaseModel):

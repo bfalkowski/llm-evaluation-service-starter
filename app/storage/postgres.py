@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, String, Text, text
+from sqlalchemy import DateTime, Select, String, Text, select, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
 from sqlalchemy.exc import SQLAlchemyError
@@ -57,6 +57,25 @@ class PostgresJobRepository:
             if row is None:
                 raise NotFoundError()
             return self._to_domain(row)
+
+    async def list_recent(
+        self,
+        *,
+        tenant_id: str | None = None,
+        project_id: str | None = None,
+        limit: int = 50,
+    ) -> list[EvaluationJob]:
+        statement: Select[tuple[EvaluationJobRow]] = (
+            select(EvaluationJobRow).order_by(EvaluationJobRow.created_at.desc()).limit(limit)
+        )
+        if tenant_id is not None:
+            statement = statement.where(EvaluationJobRow.tenant_id == tenant_id)
+        if project_id is not None:
+            statement = statement.where(EvaluationJobRow.project_id == project_id)
+
+        async with self._sessionmaker() as session:
+            rows = (await session.scalars(statement)).all()
+            return [self._to_domain(row) for row in rows]
 
     async def set_running(self, job_id: UUID) -> EvaluationJob:
         return await self._transition(job_id, {JobStatus.QUEUED}, JobStatus.RUNNING)
