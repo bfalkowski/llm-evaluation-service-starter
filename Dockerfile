@@ -5,8 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN addgroup --system app \
-    && adduser --system --ingroup app --home /app app
+RUN groupadd --gid 10001 app \
+    && useradd --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app
 
 COPY --chown=app:app pyproject.toml README.md ./
 COPY --chown=app:app app ./app

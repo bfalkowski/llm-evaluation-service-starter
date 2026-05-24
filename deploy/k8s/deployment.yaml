@@ -14,10 +14,21 @@ spec:
       labels:
         app: llm-evaluation-service
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: service
           image: ghcr.io/bfalkowski/llm-evaluation-service-starter:latest
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           ports:
             - containerPort: 8000
           envFrom:
