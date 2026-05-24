@@ -256,8 +256,13 @@ docker compose up --build
 The manifests in `deploy/k8s` are basic starting points.
 
 ```bash
-kubectl apply -f deploy/k8s/postgres.yaml
+cp deploy/k8s/secret.example.yaml deploy/k8s/secret.local.yaml
+# Edit deploy/k8s/secret.local.yaml before applying it.
+
+kubectl apply -f deploy/k8s/namespace.yaml
+kubectl apply -f deploy/k8s/secret.local.yaml
 kubectl apply -f deploy/k8s/configmap.yaml
+kubectl apply -f deploy/k8s/postgres.yaml
 kubectl apply -f deploy/k8s/deployment.yaml
 kubectl apply -f deploy/k8s/service.yaml
 ```
@@ -268,10 +273,12 @@ The demo deployment includes:
 - Liveness probe on `/health/live`.
 - Readiness probe on `/health/ready`.
 - ConfigMap-driven environment variables.
+- Secret-driven database connection configuration.
+- A dedicated `llm-evaluation` namespace.
 - Conservative CPU and memory requests/limits.
 - A simple demo Postgres deployment.
 
-For a real cluster, use managed Postgres or a properly operated database, store credentials in Secrets, add persistent volumes, image publishing, namespace management, ingress, TLS, service accounts, network policies, and observability collector configuration.
+For a real cluster, use managed Postgres or a properly operated database, inject Secrets from your deployment platform, add persistent volumes, ingress, TLS, service accounts, network policies, and observability collector configuration.
 
 ## Observability notes
 

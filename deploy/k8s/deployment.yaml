@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: llm-evaluation-service
+  namespace: llm-evaluation
   labels:
     app: llm-evaluation-service
 spec:
@@ -34,6 +35,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: llm-evaluation-service-config
+            - secretRef:
+                name: llm-evaluation-service-secrets
           readinessProbe:
             httpGet:
               path: /health/ready

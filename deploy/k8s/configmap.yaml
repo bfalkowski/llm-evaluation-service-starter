@@ -2,6 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: llm-evaluation-service-config
+  namespace: llm-evaluation
 data:
   APP_ENVIRONMENT: "portfolio"
   APP_LOG_LEVEL: "INFO"
@@ -9,6 +10,3 @@ data:
   APP_OTEL_EXPORTER: "otlp"
   APP_OTEL_OTLP_ENDPOINT: "http://otel-collector:4317"
   APP_STORAGE_BACKEND: "postgres"
-  # For a real deployment, point this at a managed Postgres instance and inject
-  # credentials through a Secret rather than storing them in a ConfigMap.
-  APP_DATABASE_URL: "postgresql+asyncpg://app:app@postgres:5432/llm_evaluations"
