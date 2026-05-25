@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: llm-evaluation-service-ingress
+  namespace: llm-evaluation
+spec:
+  podSelector:
+    matchLabels:
+      app: llm-evaluation-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-from-llm-evaluation-service
+  namespace: llm-evaluation
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: llm-evaluation-service
+      ports:
+        - protocol: TCP
+          port: 5432

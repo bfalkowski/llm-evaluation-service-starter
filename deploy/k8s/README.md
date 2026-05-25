@@ -76,9 +76,11 @@ connection string supplied by your platform's secret manager or deployment workf
 kubectl apply -f deploy/k8s/namespace.yaml
 kubectl apply -f deploy/k8s/secret.local.yaml
 kubectl apply -f deploy/k8s/configmap.yaml
+kubectl apply -f deploy/k8s/serviceaccount.yaml
 kubectl apply -f deploy/k8s/postgres.yaml
 kubectl apply -f deploy/k8s/deployment.yaml
 kubectl apply -f deploy/k8s/service.yaml
+kubectl apply -f deploy/k8s/networkpolicy.yaml
 ```
 
 Check rollout status:
@@ -129,5 +131,6 @@ For a managed cluster, keep the same broad shape but replace the demo pieces:
 - Use managed Postgres instead of the demo Postgres Deployment.
 - Inject secrets from the platform or deployment pipeline.
 - Pin image tags to immutable release tags or commit SHAs instead of `latest`.
-- Add ingress, TLS, service accounts, network policies, and telemetry collector config.
+- Add ingress, TLS, cloud workload identity, and telemetry collector config.
+- Review NetworkPolicy behavior against your cluster CNI; some local clusters do not enforce it.
 - Move environment-specific values to the deployment/config repository when that repo exists.
