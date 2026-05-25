@@ -23,7 +23,6 @@ This repository provides a small AI-adjacent platform service with clean API bou
 - No durable external queue.
 - No authentication or RBAC.
 - No production audit log store.
-- No migration framework such as Alembic yet.
 - No metrics backend or trace collector requirement.
 - No prompt/answer logging by default.
 
@@ -85,6 +84,14 @@ The main flow is:
 6. `GET /v1/evaluations/{job_id}` returns status and result metadata.
 
 Prompt and answer content are accepted by the service but are not returned in the default job status response.
+
+The current background worker runs inside the API process for local simplicity. See
+`docs/api-worker-split.md` for the production-shaped API/worker split.
+
+The evaluator is intentionally mocked and deterministic. See `docs/provider-adapter.md`
+for the future provider adapter boundary.
+
+For common operational checks and rollback commands, see `docs/operations-runbook.md`.
 
 ## Storage
 
@@ -151,6 +158,12 @@ Retrieve a job:
 
 ```bash
 curl -s 'http://localhost:8000/v1/evaluations/<job_id>?tenant_id=tenant-a'
+```
+
+Retrieve full request details for a tenant-scoped job:
+
+```bash
+curl -s 'http://localhost:8000/v1/evaluations/<job_id>/details?tenant_id=tenant-a'
 ```
 
 List recent jobs for a tenant:
@@ -305,7 +318,7 @@ OpenTelemetry instrumentation is enabled by default. FastAPI requests are instru
 - `job.process`
 - `evaluation.scoring`
 
-Span attributes include metadata such as `tenant_id`, `project_id`, `job_id`, and rubric presence. Full prompt, answer, and rubric content are not emitted into logs or traces by default because those fields may contain user data, business-sensitive data, or regulated content. A production system should make data capture explicit, governed, redacted, access-controlled, and auditable.
+Span attributes include metadata such as `tenant_id`, `project_id`, `job_id`, and rubric presence. Full prompt, answer, and rubric content are not emitted into logs or traces by default because those fields may contain user data, business-sensitive data, or regulated content. See `docs/observability-data-safety.md` for the data-safety policy behind that boundary.
 
 Tracing uses standard OpenTelemetry exporters rather than a custom exporter. The application owns meaningful span boundaries and safe attributes, while the deployment environment decides where telemetry goes.
 
@@ -322,6 +335,8 @@ Recommended usage:
 - `console` for local demos where visible spans are useful.
 - `none` for quieter local development.
 - `otlp` for deployment through an OpenTelemetry Collector to Jaeger, Tempo, Honeycomb, Datadog, New Relic, or another backend.
+
+See `docs/otlp-collector.md` for deployment notes around collector-based trace export.
 
 Disable tracing locally with:
 
