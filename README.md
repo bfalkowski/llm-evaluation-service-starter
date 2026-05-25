@@ -4,6 +4,11 @@ A clean-room FastAPI starter for a small **LLM Evaluation Job Service**.
 
 This repository provides a small AI-adjacent platform service with clean API boundaries, typed domain models, deterministic tests, async job processing, structured logging, OpenTelemetry tracing, durable job metadata, and deployable local/runtime configuration. It does not require a real model provider, external queue, auth system, or observability backend.
 
+Companion repositories:
+
+- Deployment config: `https://github.com/bfalkowski/llm-evaluation-service-deploy`
+- Streamlit console: `https://github.com/bfalkowski/llm-evaluation-console`
+
 ## Features
 
 - FastAPI service design with versioned evaluation endpoints.
@@ -16,6 +21,7 @@ This repository provides a small AI-adjacent platform service with clean API bou
 - A deterministic mock evaluator that stands in for a real LLM provider call.
 - Unit and integration tests using pytest and FastAPI TestClient.
 - Dockerfile, docker-compose, and basic Kubernetes manifests with liveness/readiness probes.
+- Companion Streamlit console available as a separate deployable component.
 
 ## Out of scope
 
@@ -46,6 +52,14 @@ tests/
 deploy/
   docker-compose.yml      Service plus local Postgres
   k8s/                    Deployment, Service, ConfigMap, demo Postgres manifest
+```
+
+Companion deployment shape:
+
+```text
+llm-evaluation-service-starter   FastAPI API, worker, storage, telemetry
+llm-evaluation-console           Streamlit operator console
+llm-evaluation-service-deploy    Helm chart and environment values
 ```
 
 ```mermaid
@@ -221,7 +235,7 @@ Run the service without Postgres:
 APP_STORAGE_BACKEND=memory uvicorn app.main:app --reload
 ```
 
-Allow a local dashboard to call the API:
+Allow browser-based local clients to call the API:
 
 ```bash
 APP_CORS_ALLOWED_ORIGINS='["http://localhost:5173","http://localhost:3000"]'
@@ -282,6 +296,10 @@ and cleanup commands.
 
 For Helm-based managed Kubernetes configuration, see the companion deployment repo:
 `https://github.com/bfalkowski/llm-evaluation-service-deploy`.
+
+That chart can deploy this service, optional demo Postgres, migration jobs, and the
+companion Streamlit console. The console image is published from:
+`https://github.com/bfalkowski/llm-evaluation-console`.
 
 ```bash
 cp deploy/k8s/secret.example.yaml deploy/k8s/secret.local.yaml
