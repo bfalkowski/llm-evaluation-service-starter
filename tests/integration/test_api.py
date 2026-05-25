@@ -268,6 +268,48 @@ def test_get_evaluation_hides_cross_tenant_job() -> None:
     assert response.json()["error"]["code"] == "not_found"
 
 
+def test_get_evaluation_details_returns_request_content() -> None:
+    with TestClient(create_app()) as client:
+        job = submit_evaluation(
+            client,
+            tenant_id="tenant-a",
+            project_id="project-a",
+            question="What changed?",
+            answer="The detail endpoint returns authorized request content.",
+        )
+        response = client.get(
+            f"/v1/evaluations/{job['job_id']}/details",
+            params={"tenant_id": "tenant-a"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["request"]["question"] == "What changed?"
+    assert body["request"]["answer"] == "The detail endpoint returns authorized request content."
+    assert body["request"]["rubric"] == "Mention traces."
+
+
+def test_get_evaluation_details_requires_tenant_id() -> None:
+    with TestClient(create_app()) as client:
+        job = submit_evaluation(client, tenant_id="tenant-a", project_id="project-a")
+        response = client.get(f"/v1/evaluations/{job['job_id']}/details")
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "bad_request"
+
+
+def test_get_evaluation_details_hides_cross_tenant_job() -> None:
+    with TestClient(create_app()) as client:
+        job = submit_evaluation(client, tenant_id="tenant-a", project_id="project-a")
+        response = client.get(
+            f"/v1/evaluations/{job['job_id']}/details",
+            params={"tenant_id": "tenant-b"},
+        )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "not_found"
+
+
 def test_validation_error_is_deterministic() -> None:
     with TestClient(create_app()) as client:
         response = client.post("/v1/evaluations", json={"tenant_id": "tenant-a"})

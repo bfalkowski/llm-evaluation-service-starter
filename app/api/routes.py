@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.core.errors import BadRequestError
 from app.core.rate_limit import InMemoryRateLimiter, client_key
 from app.domain.models import (
+    EvaluationJobDetailResponse,
     EvaluationJobResponse,
     EvaluationListResponse,
     EvaluationRequest,
@@ -86,6 +87,27 @@ async def list_evaluations(
         jobs=[job.to_summary() for job in jobs],
         request_id=request.state.request_id,
     )
+
+
+@router.get("/evaluations/{job_id}/details", response_model=EvaluationJobDetailResponse)
+async def get_evaluation_details(
+    job_id: UUID,
+    request: Request,
+) -> EvaluationJobDetailResponse:
+    tenant_id = request.query_params.get("tenant_id")
+    if tenant_id is None:
+        raise BadRequestError("tenant_id is required.")
+
+    settings = get_settings()
+    check_rate_limit(
+        request,
+        route_name="get_evaluation_details",
+        limit=settings.rate_limit_read_per_minute,
+        tenant_id=tenant_id,
+    )
+    service = get_job_service(request)
+    job = await service.get_for_tenant(job_id, tenant_id)
+    return job.to_detail_response(request.state.request_id)
 
 
 @router.get("/evaluations/{job_id}", response_model=EvaluationJobResponse)

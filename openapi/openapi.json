@@ -1,6 +1,76 @@
 {
   "components": {
     "schemas": {
+      "EvaluationJobDetailResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "string"
+          },
+          "request": {
+            "$ref": "#/components/schemas/EvaluationRequest"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "tenant_id": {
+            "title": "Tenant Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "tenant_id",
+          "project_id",
+          "status",
+          "request",
+          "created_at",
+          "updated_at",
+          "request_id"
+        ],
+        "title": "EvaluationJobDetailResponse",
+        "type": "object"
+      },
       "EvaluationJobResponse": {
         "properties": {
           "created_at": {
@@ -551,6 +621,49 @@
           }
         },
         "summary": "Get Evaluation",
+        "tags": [
+          "evaluations"
+        ]
+      }
+    },
+    "/v1/evaluations/{job_id}/details": {
+      "get": {
+        "operationId": "get_evaluation_details_v1_evaluations__job_id__details_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationJobDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Evaluation Details",
         "tags": [
           "evaluations"
         ]

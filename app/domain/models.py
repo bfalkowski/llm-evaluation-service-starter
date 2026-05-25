@@ -53,6 +53,19 @@ class EvaluationJobResponse(BaseModel):
     request_id: str
 
 
+class EvaluationJobDetailResponse(BaseModel):
+    job_id: UUID
+    tenant_id: str
+    project_id: str
+    status: JobStatus
+    request: EvaluationRequest
+    result: EvaluationResult | None = None
+    error_message: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    request_id: str
+
+
 class EvaluationJobSummary(BaseModel):
     job_id: UUID
     tenant_id: str
@@ -87,6 +100,11 @@ class EvaluationJob(BaseModel):
         data = self.model_dump(exclude={"request": {"question", "answer"}})
         data["request_id"] = request_id
         return EvaluationJobResponse.model_validate(data)
+
+    def to_detail_response(self, request_id: str) -> EvaluationJobDetailResponse:
+        data = self.model_dump()
+        data["request_id"] = request_id
+        return EvaluationJobDetailResponse.model_validate(data)
 
     def to_summary(self) -> EvaluationJobSummary:
         return EvaluationJobSummary.model_validate(
