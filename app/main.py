@@ -33,7 +33,8 @@ async def build_repository(settings: Settings) -> JobRepository:
         from app.storage.postgres import PostgresJobRepository
 
         repository = PostgresJobRepository(settings.database_url)
-        await repository.init_schema()
+        if settings.auto_create_schema:
+            await repository.init_schema()
         return repository
     raise ValueError(f"Unsupported storage backend: {settings.storage_backend}")
 

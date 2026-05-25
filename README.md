@@ -103,6 +103,16 @@ APP_STORAGE_BACKEND=memory uvicorn app.main:app --reload
 
 The Postgres repository creates its table on startup to keep local setup simple. Production deployments should replace that with Alembic migrations and a reviewed schema rollout process.
 
+Run migrations against Postgres:
+
+```bash
+APP_DATABASE_URL=postgresql+asyncpg://app:app@localhost:5432/llm_evaluations \
+  alembic upgrade head
+```
+
+For managed deployments, set `APP_AUTO_CREATE_SCHEMA=false` and run migrations as an
+explicit deployment step before starting new application pods.
+
 ## API examples
 
 Start Postgres and the service:

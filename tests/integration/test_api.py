@@ -42,6 +42,20 @@ def test_health_endpoints_are_not_rate_limited(monkeypatch: MonkeyPatch) -> None
             assert client.get("/health/ready").status_code == 200
 
 
+def test_auto_create_schema_setting_defaults_to_enabled(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.delenv("APP_AUTO_CREATE_SCHEMA", raising=False)
+    from app.core.config import get_settings
+
+    assert get_settings().auto_create_schema is True
+
+
+def test_auto_create_schema_setting_can_be_disabled(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_AUTO_CREATE_SCHEMA", "false")
+    from app.core.config import get_settings
+
+    assert get_settings().auto_create_schema is False
+
+
 def test_readiness_reports_unhealthy_repository() -> None:
     class UnhealthyRepository:
         async def health_check(self) -> bool:
