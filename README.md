@@ -257,6 +257,9 @@ The manifests in `deploy/k8s` are basic starting points.
 See `deploy/k8s/README.md` for local Kubernetes setup, image options, port-forwarding,
 and cleanup commands.
 
+For Helm-based managed Kubernetes configuration, see the companion deployment repo:
+`https://github.com/bfalkowski/llm-evaluation-service-deploy`.
+
 ```bash
 cp deploy/k8s/secret.example.yaml deploy/k8s/secret.local.yaml
 # Edit deploy/k8s/secret.local.yaml before applying it.
