@@ -24,3 +24,23 @@ def test_openapi_schema_includes_evaluation_paths() -> None:
     assert "/v1/evaluations/{job_id}" in schema["paths"]
     assert "/v1/evaluations/{job_id}/details" in schema["paths"]
     assert "/metrics" not in schema["paths"]
+
+
+def test_openapi_schema_documents_required_tenant_query_parameters() -> None:
+    with TestClient(create_app()) as client:
+        response = client.get("/openapi.json")
+
+    assert response.status_code == 200
+    schema = response.json()
+
+    for path, method in [
+        ("/v1/evaluations", "get"),
+        ("/v1/evaluations/{job_id}", "get"),
+        ("/v1/evaluations/{job_id}/details", "get"),
+    ]:
+        parameters = schema["paths"][path][method]["parameters"]
+        tenant_id = next(
+            parameter for parameter in parameters if parameter["name"] == "tenant_id"
+        )
+        assert tenant_id["in"] == "query"
+        assert tenant_id["required"] is True

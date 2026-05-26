@@ -6,7 +6,6 @@ from uuid import UUID
 from fastapi import APIRouter, Query, Request, status
 
 from app.core.config import get_settings
-from app.core.errors import BadRequestError
 from app.core.rate_limit import InMemoryRateLimiter, client_key
 from app.domain.models import (
     EvaluationJobDetailResponse,
@@ -67,13 +66,10 @@ async def submit_evaluation(
 @router.get("/evaluations", response_model=EvaluationListResponse)
 async def list_evaluations(
     request: Request,
-    tenant_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    tenant_id: Annotated[str, Query(min_length=1, max_length=128)],
     project_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> EvaluationListResponse:
-    if tenant_id is None:
-        raise BadRequestError("tenant_id is required.")
-
     settings = get_settings()
     check_rate_limit(
         request,
@@ -93,11 +89,8 @@ async def list_evaluations(
 async def get_evaluation_details(
     job_id: UUID,
     request: Request,
+    tenant_id: Annotated[str, Query(min_length=1, max_length=128)],
 ) -> EvaluationJobDetailResponse:
-    tenant_id = request.query_params.get("tenant_id")
-    if tenant_id is None:
-        raise BadRequestError("tenant_id is required.")
-
     settings = get_settings()
     check_rate_limit(
         request,
@@ -111,11 +104,11 @@ async def get_evaluation_details(
 
 
 @router.get("/evaluations/{job_id}", response_model=EvaluationJobResponse)
-async def get_evaluation(job_id: UUID, request: Request) -> EvaluationJobResponse:
-    tenant_id = request.query_params.get("tenant_id")
-    if tenant_id is None:
-        raise BadRequestError("tenant_id is required.")
-
+async def get_evaluation(
+    job_id: UUID,
+    request: Request,
+    tenant_id: Annotated[str, Query(min_length=1, max_length=128)],
+) -> EvaluationJobResponse:
     settings = get_settings()
     check_rate_limit(
         request,

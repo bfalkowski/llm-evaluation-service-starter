@@ -212,9 +212,7 @@ def test_list_evaluations_requires_tenant_id() -> None:
     with TestClient(create_app()) as client:
         response = client.get("/v1/evaluations")
 
-    assert response.status_code == 400
-    body = response.json()
-    assert body["error"]["code"] == "bad_request"
+    assert response.status_code == 422
 
 
 def test_submit_evaluation_rate_limit_returns_429(monkeypatch: MonkeyPatch) -> None:
@@ -277,8 +275,7 @@ def test_get_evaluation_requires_tenant_id() -> None:
         job = submit_evaluation(client, tenant_id="tenant-a", project_id="project-a")
         response = client.get(f"/v1/evaluations/{job['job_id']}")
 
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "bad_request"
+    assert response.status_code == 422
 
 
 def test_get_evaluation_hides_cross_tenant_job() -> None:
@@ -319,8 +316,7 @@ def test_get_evaluation_details_requires_tenant_id() -> None:
         job = submit_evaluation(client, tenant_id="tenant-a", project_id="project-a")
         response = client.get(f"/v1/evaluations/{job['job_id']}/details")
 
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "bad_request"
+    assert response.status_code == 422
 
 
 def test_get_evaluation_details_hides_cross_tenant_job() -> None:

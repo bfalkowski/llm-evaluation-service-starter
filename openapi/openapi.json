@@ -536,19 +536,12 @@
           {
             "in": "query",
             "name": "tenant_id",
-            "required": false,
+            "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "maxLength": 128,
-                  "minLength": 1,
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Tenant Id"
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Tenant Id",
+              "type": "string"
             }
           },
           {
@@ -662,6 +655,17 @@
               "title": "Job Id",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Tenant Id",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -703,6 +707,17 @@
             "schema": {
               "format": "uuid",
               "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "tenant_id",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "title": "Tenant Id",
               "type": "string"
             }
           }
