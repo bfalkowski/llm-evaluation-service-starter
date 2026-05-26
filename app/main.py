@@ -12,7 +12,7 @@ from starlette.responses import Response
 from app.api.health import router as health_router
 from app.api.routes import router as evaluation_router
 from app.core.audit import AuditRecorder
-from app.core.config import Settings, get_settings
+from app.core.config import get_settings
 from app.core.errors import AppError, app_error_handler, unhandled_error_handler
 from app.core.logging import configure_logging, new_request_id, request_id_var
 from app.core.rate_limit import InMemoryRateLimiter
@@ -21,23 +21,9 @@ from app.services.evaluator import Evaluator
 from app.services.job_service import EvaluationJobService
 from app.services.queue import InMemoryJobQueue
 from app.services.worker import EvaluationWorker
-from app.storage.base import JobRepository
-from app.storage.in_memory import InMemoryJobRepository
+from app.storage.factory import build_repository
 
 logger = logging.getLogger(__name__)
-
-
-async def build_repository(settings: Settings) -> JobRepository:
-    if settings.storage_backend == "memory":
-        return InMemoryJobRepository()
-    if settings.storage_backend == "postgres":
-        from app.storage.postgres import PostgresJobRepository
-
-        repository = PostgresJobRepository(settings.database_url)
-        if settings.auto_create_schema:
-            await repository.init_schema()
-        return repository
-    raise ValueError(f"Unsupported storage backend: {settings.storage_backend}")
 
 
 class RequestIdMiddleware(BaseHTTPMiddleware):

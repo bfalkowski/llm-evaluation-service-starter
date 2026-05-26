@@ -8,11 +8,11 @@ from app.core.audit import AuditRecorder
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.tracing import configure_worker_tracing
-from app.main import build_repository
 from app.services.evaluator import Evaluator
 from app.services.job_service import EvaluationJobService
 from app.services.queue import InMemoryJobQueue
 from app.services.worker import EvaluationWorker
+from app.storage.factory import build_repository
 
 logger = logging.getLogger(__name__)
 
