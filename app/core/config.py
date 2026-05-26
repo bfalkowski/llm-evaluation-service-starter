@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     rate_limit_submit_per_minute: int = 30
     rate_limit_read_per_minute: int = 120
     rate_limit_list_per_minute: int = 60
+    auth_enabled: bool = False
+    auth_issuer: str = "llm-evaluation-service"
+    auth_audience: str = "llm-evaluation-service"
+    auth_demo_secret: str = "local-demo-secret"
 
 
 def get_settings() -> Settings:

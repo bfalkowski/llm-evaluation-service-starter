@@ -26,6 +26,12 @@ class BadRequestError(AppError):
     public_message = "The request is invalid."
 
 
+class UnauthorizedError(AppError):
+    status_code = 401
+    code = "unauthorized"
+    public_message = "Authentication is required."
+
+
 class InvalidStateTransitionError(AppError):
     status_code = 409
     code = "invalid_state_transition"
