@@ -34,6 +34,10 @@ class MetricsRegistry:
                 "counter",
                 "Stale running jobs recovered by workers.",
             ),
+            "evaluation_queue_depth": (
+                "gauge",
+                "In-memory evaluation jobs waiting to be processed.",
+            ),
         }
         self._lock = threading.Lock()
 
@@ -45,6 +49,15 @@ class MetricsRegistry:
     ) -> None:
         with self._lock:
             self._values[(name, self._label_set(labels))] += amount
+
+    def set_gauge(
+        self,
+        name: str,
+        value: float,
+        labels: Mapping[str, str] | None = None,
+    ) -> None:
+        with self._lock:
+            self._values[(name, self._label_set(labels))] = value
 
     def observe_duration(self, name: str, seconds: float, labels: Mapping[str, str]) -> None:
         self.increment(f"{name}_count", labels)
@@ -109,3 +122,7 @@ def record_scoring_duration(duration_seconds: float) -> None:
 
 def record_worker_recovered_jobs(count: int) -> None:
     metrics.increment("evaluation_worker_recovered_jobs_total", amount=float(count))
+
+
+def record_queue_depth(depth: int) -> None:
+    metrics.set_gauge("evaluation_queue_depth", float(max(depth, 0)))

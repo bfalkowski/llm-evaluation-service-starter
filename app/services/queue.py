@@ -5,6 +5,8 @@ import logging
 from collections.abc import Awaitable, Callable
 from uuid import UUID
 
+from app.core.metrics import record_queue_depth
+
 logger = logging.getLogger(__name__)
 
 JobHandler = Callable[[UUID], Awaitable[None]]
@@ -18,6 +20,7 @@ class InMemoryJobQueue:
 
     async def enqueue(self, job_id: UUID) -> None:
         await self._queue.put(job_id)
+        record_queue_depth(self._queue.qsize())
 
     def start(self, handler: JobHandler) -> None:
         if self._task is None or self._task.done():
@@ -41,6 +44,7 @@ class InMemoryJobQueue:
                 logger.exception("background job handler failed", extra={"job_id": str(job_id)})
             finally:
                 self._queue.task_done()
+                record_queue_depth(self._queue.qsize())
 
     async def join(self) -> None:
         await self._queue.join()

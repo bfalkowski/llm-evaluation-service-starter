@@ -11,6 +11,7 @@ Guidance for AI coding agents working in this repository.
 ## Local planning context
 
 - If `.local/PROJECT_WORKING_CONTEXT.md` exists, read it before planning substantial changes.
+- If `.local/COMMIT_STEERING.md` exists, follow it for all commits. Never add `Co-authored-by: Cursor` (or any AI co-author trailer).
 - For local API + console startup, see `.local/LOCAL_DEV.md` (`./scripts/local_e2e.sh`).
 - Treat `.local/` as private workspace context. Do not commit it, copy it into public docs, include it in Docker build contexts, or quote it in public-facing project materials.
 - Public repository files should stand on their own. Local notes can guide priorities, but implementation and docs should remain generic and clean-room safe.

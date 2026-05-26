@@ -6,6 +6,7 @@
 #   ./scripts/local_e2e.sh --stop       # stop API/console and free ports
 #   ./scripts/local_e2e.sh --no-smoke   # start API + console only
 #   ./scripts/local_e2e.sh --no-console # start API only (no Streamlit)
+#   ./scripts/local_e2e.sh --postgres   # docker Postgres + host API (jobs persist)
 #   ./scripts/local_e2e.sh --free-postgres   # also free localhost:5432
 #
 # Environment overrides:
@@ -23,8 +24,11 @@ CONSOLE_PID_FILE="${TMPDIR:-/tmp}/llm-evaluation-console-e2e.pid"
 LOG_FILE="${TMPDIR:-/tmp}/llm-evaluation-service-e2e.log"
 CONSOLE_LOG_FILE="${TMPDIR:-/tmp}/llm-evaluation-console-e2e.log"
 TOKEN_FILE="${TMPDIR:-/tmp}/llm-evaluation-service-e2e.token"
+COMPOSE_MARKER="${TMPDIR:-/tmp}/llm-evaluation-compose-e2e.marker"
+DATABASE_URL="${LOCAL_E2E_DATABASE_URL:-postgresql+asyncpg://app:app@localhost:5432/llm_evaluations}"
 
 PORT="${LOCAL_E2E_PORT:-8000}"
+USE_POSTGRES=false
 CONSOLE_PORT="${LOCAL_E2E_CONSOLE_PORT:-8501}"
 CONSOLE_ROOT="${LOCAL_E2E_CONSOLE_DIR:-${REPO_PARENT}/llm-evaluation-console}"
 AUTH_SECRET="${APP_AUTH_DEMO_SECRET:-local-demo-secret}"
@@ -99,10 +103,48 @@ free_ports() {
   stop_pid_file "${CONSOLE_PID_FILE}" "console"
 }
 
+stop_compose() {
+  if [[ -f "${COMPOSE_MARKER}" ]]; then
+    echo "Stopping docker compose Postgres..."
+    cd "${REPO_ROOT}/deploy"
+    docker compose down
+    rm -f "${COMPOSE_MARKER}"
+  fi
+}
+
 stop_all() {
   free_ports "${FREE_POSTGRES_FLAG:-}"
+  stop_compose
   rm -f "${TOKEN_FILE}"
-  echo "Stopped local API, console, and freed dev ports."
+  echo "Stopped local API, console, compose Postgres, and freed dev ports."
+}
+
+wait_for_postgres() {
+  local attempts=40
+  local i
+  cd "${REPO_ROOT}/deploy"
+  for ((i = 1; i <= attempts; i++)); do
+    if docker compose exec -T postgres pg_isready -U app -d llm_evaluations >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.5
+  done
+  echo "Postgres did not become ready via docker compose." >&2
+  return 1
+}
+
+start_postgres_compose() {
+  cd "${REPO_ROOT}/deploy"
+  echo "Starting Postgres via docker compose..."
+  docker compose up -d postgres
+  echo "postgres" >"${COMPOSE_MARKER}"
+  wait_for_postgres
+}
+
+run_migrations() {
+  cd "${REPO_ROOT}"
+  echo "Running alembic migrations..."
+  APP_DATABASE_URL="${DATABASE_URL}" uv run alembic upgrade head
 }
 
 wait_for_ready() {
@@ -144,11 +186,25 @@ create_demo_token() {
 start_api() {
   cd "${REPO_ROOT}"
   : >"${LOG_FILE}"
-  echo "Starting API on ${BASE_URL} (log: ${LOG_FILE})"
-  APP_STORAGE_BACKEND=memory \
-    APP_AUTH_ENABLED=true \
-    APP_AUTH_DEMO_SECRET="${AUTH_SECRET}" \
-    APP_OTEL_EXPORTER=none \
+  local storage_backend="memory"
+  local -a api_env=(
+    "APP_AUTH_ENABLED=true"
+    "APP_AUTH_DEMO_SECRET=${AUTH_SECRET}"
+    "APP_OTEL_EXPORTER=none"
+  )
+  if [[ "${USE_POSTGRES}" == "true" ]]; then
+    storage_backend="postgres"
+    api_env+=(
+      "APP_STORAGE_BACKEND=postgres"
+      "APP_DATABASE_URL=${DATABASE_URL}"
+      "APP_AUTO_CREATE_SCHEMA=false"
+    )
+  else
+    api_env+=("APP_STORAGE_BACKEND=memory")
+  fi
+  echo "Starting API on ${BASE_URL} (${storage_backend}, log: ${LOG_FILE})"
+  # shellcheck disable=SC2086
+  env "${api_env[@]}" \
     nohup uv run uvicorn app.main:app --host 127.0.0.1 --port "${PORT}" >>"${LOG_FILE}" 2>&1 &
   echo $! >"${PID_FILE}"
   wait_for_ready
@@ -235,6 +291,11 @@ print_urls() {
   echo "${token}"
   echo "(also saved to ${TOKEN_FILE})"
   echo
+  if [[ "${USE_POSTGRES}" == "true" ]]; then
+    echo "Storage: Postgres (jobs persist across API restarts)"
+  else
+    echo "Storage: in-memory (jobs cleared when API stops)"
+  fi
   echo "Stop everything: ./scripts/local_e2e.sh --stop"
 }
 
@@ -255,6 +316,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-console)
       START_CONSOLE=false
+      shift
+      ;;
+    --postgres)
+      USE_POSTGRES=true
+      FREE_POSTGRES_FLAG="with-postgres"
       shift
       ;;
     --free-postgres)
@@ -279,6 +345,10 @@ if [[ "${MODE}" == "stop" ]]; then
 fi
 
 free_ports "${FREE_POSTGRES_FLAG}"
+if [[ "${USE_POSTGRES}" == "true" ]]; then
+  start_postgres_compose
+  run_migrations
+fi
 start_api
 
 token="$(create_demo_token)"

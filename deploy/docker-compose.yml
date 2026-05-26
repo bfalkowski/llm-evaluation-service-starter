@@ -14,6 +14,8 @@ services:
       APP_PROCESS_ROLE: api
       APP_STORAGE_BACKEND: postgres
       APP_DATABASE_URL: postgresql+asyncpg://app:app@postgres:5432/llm_evaluations
+      APP_AUTH_ENABLED: "true"
+      APP_AUTH_DEMO_SECRET: local-demo-secret
     ports:
       - "8000:8000"
     depends_on:
@@ -36,6 +38,8 @@ services:
       APP_STORAGE_BACKEND: postgres
       APP_DATABASE_URL: postgresql+asyncpg://app:app@postgres:5432/llm_evaluations
       APP_AUTO_CREATE_SCHEMA: "false"
+      APP_AUTH_ENABLED: "true"
+      APP_AUTH_DEMO_SECRET: local-demo-secret
     depends_on:
       postgres:
         condition: service_healthy

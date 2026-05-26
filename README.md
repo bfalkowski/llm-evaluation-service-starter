@@ -158,6 +158,12 @@ Stop the API, console, and free ports:
 
 API only (no Streamlit): `./scripts/local_e2e.sh --no-console`
 
+Jobs that survive API restarts (Docker Postgres + migrations):
+
+```bash
+./scripts/local_e2e.sh --postgres
+```
+
 If Docker Compose Postgres fails with a port conflict on `5432`:
 
 ```bash
