@@ -400,6 +400,7 @@ Recommended production additions:
 - Rate limits and request size limits.
 - Model provider allowlists and policy checks.
 - Secrets managed by the deployment platform, not source control.
+- Supply-chain scanning before image promotion.
 - SLOs for queue latency, provider latency, failure rate, and evaluation throughput.
 
 ## Resilience and platform patterns
