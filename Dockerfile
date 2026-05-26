@@ -12,8 +12,9 @@ WORKDIR /app
 RUN groupadd --gid 10001 app \
     && useradd --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app
 
-COPY --chown=app:app pyproject.toml README.md ./
+COPY --chown=app:app pyproject.toml README.md alembic.ini ./
 COPY --chown=app:app app ./app
+COPY --chown=app:app migrations ./migrations
 
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir .
