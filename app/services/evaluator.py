@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import time
 
+from app.core.metrics import record_scoring_duration
 from app.core.resilience import retry_async, with_timeout
 from app.core.tracing import traced_span
 from app.domain.evaluation import score_mock_response
@@ -24,7 +26,11 @@ class Evaluator:
             project_id=request.project_id,
             rubric_present=request.rubric is not None,
         ):
-            return await retry_async(
-                lambda: with_timeout(operation(), self.timeout_seconds),
-                attempts=2,
-            )
+            started_at = time.perf_counter()
+            try:
+                return await retry_async(
+                    lambda: with_timeout(operation(), self.timeout_seconds),
+                    attempts=2,
+                )
+            finally:
+                record_scoring_duration(time.perf_counter() - started_at)

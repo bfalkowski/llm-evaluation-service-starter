@@ -1,3 +1,4 @@
+import time
 from typing import cast
 
 from _pytest.monkeypatch import MonkeyPatch
@@ -40,6 +41,30 @@ def test_health_endpoints_are_not_rate_limited(monkeypatch: MonkeyPatch) -> None
         for _ in range(3):
             assert client.get("/health/live").status_code == 200
             assert client.get("/health/ready").status_code == 200
+
+
+def test_metrics_endpoint_reports_requests_and_jobs() -> None:
+    with TestClient(create_app()) as client:
+        job = submit_evaluation(client, tenant_id="tenant-a", project_id="project-a")
+        for _ in range(20):
+            response = client.get(
+                f"/v1/evaluations/{job['job_id']}",
+                params={"tenant_id": "tenant-a"},
+            )
+            assert response.status_code == 200
+            if response.json()["status"] == "succeeded":
+                break
+            time.sleep(0.05)
+
+        metrics_response = client.get("/metrics")
+
+    assert metrics_response.status_code == 200
+    assert metrics_response.headers["content-type"].startswith("text/plain")
+    body = metrics_response.text
+    assert "# TYPE http_requests_total counter" in body
+    assert 'http_requests_total{method="POST",route="/v1/evaluations",status_code="202"}' in body
+    assert 'evaluation_jobs_total{status="queued"}' in body
+    assert "# TYPE evaluation_scoring_duration_seconds_count counter" in body
 
 
 def test_auto_create_schema_setting_defaults_to_enabled(monkeypatch: MonkeyPatch) -> None:

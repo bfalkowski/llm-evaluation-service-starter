@@ -16,6 +16,7 @@ Local or port-forwarded:
 ```bash
 curl -s http://localhost:8000/health/live
 curl -s http://localhost:8000/health/ready
+curl -s http://localhost:8000/metrics
 ```
 
 Kubernetes:
@@ -28,6 +29,9 @@ kubectl -n llm-evaluation logs deployment/llm-evaluation-service
 
 `/health/live` only checks that the process is alive. `/health/ready` checks whether the
 repository dependency is healthy.
+
+`/metrics` returns Prometheus-compatible text metrics for request counts, request
+latency, job status counts, scoring latency, and stale worker recovery counts.
 
 ## Service Is Not Ready
 

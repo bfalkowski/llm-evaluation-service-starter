@@ -23,3 +23,4 @@ def test_openapi_schema_includes_evaluation_paths() -> None:
     assert "/v1/evaluations" in schema["paths"]
     assert "/v1/evaluations/{job_id}" in schema["paths"]
     assert "/v1/evaluations/{job_id}/details" in schema["paths"]
+    assert "/metrics" not in schema["paths"]

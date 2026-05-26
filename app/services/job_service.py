@@ -4,6 +4,7 @@ import logging
 from uuid import UUID, uuid4
 
 from app.core.audit import AuditRecorder
+from app.core.metrics import record_job_status
 from app.core.tracing import traced_span
 from app.domain.models import EvaluationJob, EvaluationRequest, JobStatus
 from app.services.evaluator import Evaluator
@@ -48,6 +49,7 @@ class EvaluationJobService:
                 project_id=job.project_id,
                 job_id=str(job.job_id),
             )
+            record_job_status(JobStatus.QUEUED.value)
         return job
 
     async def get(self, job_id: UUID) -> EvaluationJob:
@@ -102,6 +104,7 @@ class EvaluationJobService:
                         "job_id": str(job_id),
                     },
                 )
+                record_job_status(JobStatus.SUCCEEDED.value)
             except Exception as exc:
                 await self._record_failure(job, "Evaluation failed.", exc)
                 logger.exception("evaluation job failed", extra={"job_id": str(job_id)})
@@ -138,6 +141,7 @@ class EvaluationJobService:
                         "job_id": str(job.job_id),
                     },
                 )
+                record_job_status(JobStatus.SUCCEEDED.value)
             except Exception as exc:
                 await self._record_failure(job, "Evaluation failed.", exc)
                 logger.exception("evaluation job failed", extra={"job_id": str(job.job_id)})
@@ -157,6 +161,7 @@ class EvaluationJobService:
                 project_id=job.project_id,
                 job_id=str(job.job_id),
             )
+            record_job_status(JobStatus.FAILED.value)
         except Exception:
             logger.exception(
                 "failed to persist evaluation job failure",

@@ -341,6 +341,16 @@ For a real cluster, use managed Postgres or a properly operated database, inject
 
 The service emits structured JSON logs to stdout. Each request gets a request ID from `x-request-id` or a generated UUID. The request ID is included in logs and response headers.
 
+The service also exposes Prometheus-compatible text metrics at:
+
+```bash
+curl -s http://localhost:8000/metrics
+```
+
+Current metrics include HTTP request counts and latency, evaluation job status counts,
+scoring latency, and stale worker job recoveries. Metrics use low-cardinality labels and
+do not include prompt, answer, rubric, or request body content.
+
 OpenTelemetry instrumentation is enabled by default. FastAPI requests are instrumented, and custom spans are added around:
 
 - `job.create`

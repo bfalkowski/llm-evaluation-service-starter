@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -10,11 +11,13 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.responses import Response
 
 from app.api.health import router as health_router
+from app.api.metrics import router as metrics_router
 from app.api.routes import router as evaluation_router
 from app.core.audit import AuditRecorder
 from app.core.config import get_settings
 from app.core.errors import AppError, app_error_handler, unhandled_error_handler
 from app.core.logging import configure_logging, new_request_id, request_id_var
+from app.core.metrics import record_http_request
 from app.core.rate_limit import InMemoryRateLimiter
 from app.core.tracing import configure_tracing
 from app.services.evaluator import Evaluator
@@ -37,6 +40,21 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
             return response
         finally:
             request_id_var.reset(token)
+
+
+class MetricsMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        started_at = time.perf_counter()
+        response = await call_next(request)
+        route = getattr(request.scope.get("route"), "path", request.url.path)
+        if route != "/metrics":
+            record_http_request(
+                method=request.method,
+                route=route,
+                status_code=response.status_code,
+                duration_seconds=time.perf_counter() - started_at,
+            )
+        return response
 
 
 @asynccontextmanager
@@ -87,9 +105,11 @@ def create_app() -> FastAPI:
         allow_headers=["content-type", "x-request-id"],
     )
     app.add_middleware(RequestIdMiddleware)
+    app.add_middleware(MetricsMiddleware)
     app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
     app.add_exception_handler(Exception, unhandled_error_handler)
     app.include_router(health_router)
+    app.include_router(metrics_router)
     app.include_router(evaluation_router)
     configure_tracing(
         app,

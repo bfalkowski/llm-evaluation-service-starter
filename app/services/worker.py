@@ -4,6 +4,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 
+from app.core.metrics import record_worker_recovered_jobs
 from app.services.job_service import EvaluationJobService
 
 logger = logging.getLogger(__name__)
@@ -40,6 +41,7 @@ class EvaluationWorker:
                 cutoff = datetime.now(UTC) - timedelta(seconds=self.stale_job_seconds)
                 recovered = await self.job_service.repository.recover_stale_running(cutoff=cutoff)
                 if recovered:
+                    record_worker_recovered_jobs(recovered)
                     logger.warning("recovered stale running jobs", extra={"job_count": recovered})
 
                 claimed = await self.job_service.repository.claim_next_queued()
