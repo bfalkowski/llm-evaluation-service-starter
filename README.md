@@ -301,6 +301,9 @@ That chart can deploy this service, optional demo Postgres, migration jobs, and 
 companion Streamlit console. The console image is published from:
 `https://github.com/bfalkowski/llm-evaluation-console`.
 
+For the broader deployment roadmap, see:
+`https://github.com/bfalkowski/llm-evaluation-service-deploy/blob/main/docs/roadmap.md`.
+
 ```bash
 cp deploy/k8s/secret.example.yaml deploy/k8s/secret.local.yaml
 # Edit deploy/k8s/secret.local.yaml before applying it.
