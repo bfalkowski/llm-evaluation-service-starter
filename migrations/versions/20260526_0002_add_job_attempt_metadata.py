@@ -19,21 +19,29 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "evaluation_jobs",
-        sa.Column("attempt_count", sa.Integer(), nullable=False, server_default="0"),
-    )
-    op.add_column(
-        "evaluation_jobs",
-        sa.Column("max_attempts", sa.Integer(), nullable=False, server_default="3"),
-    )
-    op.add_column(
-        "evaluation_jobs",
-        sa.Column("claimed_at", sa.DateTime(timezone=True), nullable=True),
-    )
-    op.alter_column("evaluation_jobs", "attempt_count", server_default=None)
-    op.alter_column("evaluation_jobs", "max_attempts", server_default=None)
-    op.create_index("ix_evaluation_jobs_claimed_at", "evaluation_jobs", ["claimed_at"])
+    inspector = sa.inspect(op.get_bind())
+    existing_columns = {column["name"] for column in inspector.get_columns("evaluation_jobs")}
+    if "attempt_count" not in existing_columns:
+        op.add_column(
+            "evaluation_jobs",
+            sa.Column("attempt_count", sa.Integer(), nullable=False, server_default="0"),
+        )
+        op.alter_column("evaluation_jobs", "attempt_count", server_default=None)
+    if "max_attempts" not in existing_columns:
+        op.add_column(
+            "evaluation_jobs",
+            sa.Column("max_attempts", sa.Integer(), nullable=False, server_default="3"),
+        )
+        op.alter_column("evaluation_jobs", "max_attempts", server_default=None)
+    if "claimed_at" not in existing_columns:
+        op.add_column(
+            "evaluation_jobs",
+            sa.Column("claimed_at", sa.DateTime(timezone=True), nullable=True),
+        )
+
+    existing_indexes = {index["name"] for index in inspector.get_indexes("evaluation_jobs")}
+    if "ix_evaluation_jobs_claimed_at" not in existing_indexes:
+        op.create_index("ix_evaluation_jobs_claimed_at", "evaluation_jobs", ["claimed_at"])
 
 
 def downgrade() -> None:

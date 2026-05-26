@@ -20,22 +20,29 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "evaluation_jobs",
-        sa.Column("job_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("tenant_id", sa.String(length=128), nullable=False),
-        sa.Column("project_id", sa.String(length=128), nullable=False),
-        sa.Column("status", sa.String(length=32), nullable=False),
-        sa.Column("request_payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-        sa.Column("result_payload", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column("error_message", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.PrimaryKeyConstraint("job_id"),
-    )
-    op.create_index("ix_evaluation_jobs_project_id", "evaluation_jobs", ["project_id"])
-    op.create_index("ix_evaluation_jobs_status", "evaluation_jobs", ["status"])
-    op.create_index("ix_evaluation_jobs_tenant_id", "evaluation_jobs", ["tenant_id"])
+    inspector = sa.inspect(op.get_bind())
+    if not inspector.has_table("evaluation_jobs"):
+        op.create_table(
+            "evaluation_jobs",
+            sa.Column("job_id", postgresql.UUID(as_uuid=True), nullable=False),
+            sa.Column("tenant_id", sa.String(length=128), nullable=False),
+            sa.Column("project_id", sa.String(length=128), nullable=False),
+            sa.Column("status", sa.String(length=32), nullable=False),
+            sa.Column("request_payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+            sa.Column("result_payload", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+            sa.Column("error_message", sa.Text(), nullable=True),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+            sa.PrimaryKeyConstraint("job_id"),
+        )
+
+    existing_indexes = {index["name"] for index in inspector.get_indexes("evaluation_jobs")}
+    if "ix_evaluation_jobs_project_id" not in existing_indexes:
+        op.create_index("ix_evaluation_jobs_project_id", "evaluation_jobs", ["project_id"])
+    if "ix_evaluation_jobs_status" not in existing_indexes:
+        op.create_index("ix_evaluation_jobs_status", "evaluation_jobs", ["status"])
+    if "ix_evaluation_jobs_tenant_id" not in existing_indexes:
+        op.create_index("ix_evaluation_jobs_tenant_id", "evaluation_jobs", ["tenant_id"])
 
 
 def downgrade() -> None:
