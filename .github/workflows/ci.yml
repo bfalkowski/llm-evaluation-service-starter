@@ -73,6 +73,7 @@ jobs:
     needs:
       - tests
       - static-checks
+      - security-checks
 
     steps:
       - name: Check out repository
