@@ -1,9 +1,12 @@
 import time
+from datetime import timedelta
 from typing import cast
 
 from _pytest.monkeypatch import MonkeyPatch
 from fastapi.testclient import TestClient
 
+from app.core.auth import create_demo_jwt
+from app.core.config import Settings
 from app.main import create_app
 
 
@@ -27,6 +30,25 @@ def submit_evaluation(
     )
     assert response.status_code == 202
     return cast(dict[str, object], response.json())
+
+
+def auth_headers(
+    monkeypatch: MonkeyPatch,
+    *,
+    tenant_id: str,
+    subject: str = "user-1",
+) -> dict[str, str]:
+    monkeypatch.setenv("APP_AUTH_ENABLED", "true")
+    monkeypatch.setenv("APP_AUTH_DEMO_SECRET", "test-secret")
+    settings = Settings(auth_enabled=True, auth_demo_secret="test-secret")
+    token = create_demo_jwt(
+        settings=settings,
+        tenant_id=tenant_id,
+        subject=subject,
+        scopes=("evaluations:read", "evaluations:write"),
+        expires_delta=timedelta(minutes=30),
+    )
+    return {"authorization": f"Bearer {token}"}
 
 
 def test_health_endpoints() -> None:
@@ -212,7 +234,8 @@ def test_list_evaluations_requires_tenant_id() -> None:
     with TestClient(create_app()) as client:
         response = client.get("/v1/evaluations")
 
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "bad_request"
 
 
 def test_submit_evaluation_rate_limit_returns_429(monkeypatch: MonkeyPatch) -> None:
@@ -275,7 +298,8 @@ def test_get_evaluation_requires_tenant_id() -> None:
         job = submit_evaluation(client, tenant_id="tenant-a", project_id="project-a")
         response = client.get(f"/v1/evaluations/{job['job_id']}")
 
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "bad_request"
 
 
 def test_get_evaluation_hides_cross_tenant_job() -> None:
@@ -316,7 +340,8 @@ def test_get_evaluation_details_requires_tenant_id() -> None:
         job = submit_evaluation(client, tenant_id="tenant-a", project_id="project-a")
         response = client.get(f"/v1/evaluations/{job['job_id']}/details")
 
-    assert response.status_code == 422
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "bad_request"
 
 
 def test_get_evaluation_details_hides_cross_tenant_job() -> None:
@@ -336,3 +361,96 @@ def test_validation_error_is_deterministic() -> None:
         response = client.post("/v1/evaluations", json={"tenant_id": "tenant-a"})
 
     assert response.status_code == 422
+
+
+def test_auth_enabled_requires_bearer_token(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_AUTH_ENABLED", "true")
+    with TestClient(create_app()) as client:
+        response = client.get("/v1/evaluations")
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "unauthorized"
+
+
+def test_auth_enabled_rejects_invalid_bearer_token(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_AUTH_ENABLED", "true")
+    with TestClient(create_app()) as client:
+        response = client.get(
+            "/v1/evaluations",
+            headers={"authorization": "Bearer not-a-token"},
+        )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "unauthorized"
+
+
+def test_auth_enabled_submit_and_get_use_token_tenant(monkeypatch: MonkeyPatch) -> None:
+    headers = auth_headers(monkeypatch, tenant_id="tenant-a")
+    with TestClient(create_app()) as client:
+        response = client.post(
+            "/v1/evaluations",
+            json={
+                "tenant_id": "tenant-b",
+                "project_id": "project-a",
+                "question": "Why use OpenTelemetry?",
+                "answer": "OpenTelemetry helps collect traces.",
+            },
+            headers=headers,
+        )
+        assert response.status_code == 202
+        body = response.json()
+
+        status_response = client.get(f"/v1/evaluations/{body['job_id']}", headers=headers)
+
+    assert status_response.status_code == 200
+    status_body = status_response.json()
+    assert status_body["tenant_id"] == "tenant-a"
+    assert status_body["request"]["tenant_id"] == "tenant-a"
+
+
+def test_auth_enabled_list_uses_token_tenant(monkeypatch: MonkeyPatch) -> None:
+    headers = auth_headers(monkeypatch, tenant_id="tenant-a")
+    with TestClient(create_app()) as client:
+        created = client.post(
+            "/v1/evaluations",
+            json={
+                "project_id": "project-a",
+                "question": "Why use OpenTelemetry?",
+                "answer": "OpenTelemetry helps collect traces.",
+            },
+            headers=headers,
+        )
+        assert created.status_code == 202
+        response = client.get(
+            "/v1/evaluations",
+            params={"tenant_id": "tenant-b"},
+            headers=headers,
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert [job["tenant_id"] for job in body["jobs"]] == ["tenant-a"]
+
+
+def test_auth_enabled_hides_cross_tenant_job(monkeypatch: MonkeyPatch) -> None:
+    tenant_a_headers = auth_headers(monkeypatch, tenant_id="tenant-a")
+    tenant_b_headers = auth_headers(monkeypatch, tenant_id="tenant-b")
+    with TestClient(create_app()) as client:
+        created = client.post(
+            "/v1/evaluations",
+            json={
+                "project_id": "project-a",
+                "question": "Why use OpenTelemetry?",
+                "answer": "OpenTelemetry helps collect traces.",
+            },
+            headers=tenant_a_headers,
+        )
+        assert created.status_code == 202
+
+        response = client.get(
+            f"/v1/evaluations/{created.json()['job_id']}",
+            headers=tenant_b_headers,
+        )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "not_found"

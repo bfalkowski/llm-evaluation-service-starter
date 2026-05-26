@@ -6,9 +6,11 @@ import hmac
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Annotated, Any
 
-from app.core.config import Settings
+from fastapi import Header
+
+from app.core.config import Settings, get_settings
 from app.core.errors import UnauthorizedError
 
 
@@ -88,6 +90,23 @@ def validate_demo_jwt(
         subject=_required_string(payload, "sub"),
         scopes=_scopes(payload),
     )
+
+
+def get_request_context(
+    authorization: Annotated[str | None, Header(alias="Authorization")] = None,
+) -> RequestContext | None:
+    settings = get_settings()
+    if not settings.auth_enabled:
+        return None
+
+    if authorization is None:
+        raise UnauthorizedError("Missing bearer token.")
+
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise UnauthorizedError("Invalid authorization header.")
+
+    return validate_demo_jwt(token, settings=settings)
 
 
 def _decode_token_parts(token: str) -> tuple[dict[str, Any], dict[str, Any], str, bytes]:

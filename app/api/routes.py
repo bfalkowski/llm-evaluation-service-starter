@@ -3,15 +3,17 @@ from __future__ import annotations
 from typing import Annotated, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 
+from app.core.auth import RequestContext, get_request_context
 from app.core.config import get_settings
+from app.core.errors import BadRequestError
 from app.core.rate_limit import InMemoryRateLimiter, client_key
 from app.domain.models import (
     EvaluationJobDetailResponse,
     EvaluationJobResponse,
     EvaluationListResponse,
-    EvaluationRequest,
+    SubmitEvaluationRequest,
     SubmitEvaluationResponse,
 )
 from app.services.job_service import EvaluationJobService
@@ -38,24 +40,37 @@ def check_rate_limit(
     limiter.check(client_key(request, route_name, tenant_id), limit)
 
 
+def tenant_from_context_or_request(
+    context: RequestContext | None,
+    tenant_id: str | None,
+) -> str:
+    if context is not None:
+        return context.tenant_id
+    if tenant_id is None:
+        raise BadRequestError("tenant_id is required.")
+    return tenant_id
+
+
 @router.post(
     "/evaluations",
     status_code=status.HTTP_202_ACCEPTED,
     response_model=SubmitEvaluationResponse,
 )
 async def submit_evaluation(
-    payload: EvaluationRequest,
+    payload: SubmitEvaluationRequest,
     request: Request,
+    context: RequestContext | None = Depends(get_request_context),
 ) -> SubmitEvaluationResponse:
+    tenant_id = tenant_from_context_or_request(context, payload.tenant_id)
     settings = get_settings()
     check_rate_limit(
         request,
         route_name="submit_evaluation",
         limit=settings.rate_limit_submit_per_minute,
-        tenant_id=payload.tenant_id,
+        tenant_id=tenant_id,
     )
     service = get_job_service(request)
-    job = await service.submit(payload)
+    job = await service.submit(payload.to_evaluation_request(tenant_id))
     return SubmitEvaluationResponse(
         job_id=job.job_id,
         status=job.status,
@@ -66,19 +81,25 @@ async def submit_evaluation(
 @router.get("/evaluations", response_model=EvaluationListResponse)
 async def list_evaluations(
     request: Request,
-    tenant_id: Annotated[str, Query(min_length=1, max_length=128)],
+    tenant_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     project_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    context: RequestContext | None = Depends(get_request_context),
 ) -> EvaluationListResponse:
+    resolved_tenant_id = tenant_from_context_or_request(context, tenant_id)
     settings = get_settings()
     check_rate_limit(
         request,
         route_name="list_evaluations",
         limit=settings.rate_limit_list_per_minute,
-        tenant_id=tenant_id,
+        tenant_id=resolved_tenant_id,
     )
     service = get_job_service(request)
-    jobs = await service.list_recent(tenant_id=tenant_id, project_id=project_id, limit=limit)
+    jobs = await service.list_recent(
+        tenant_id=resolved_tenant_id,
+        project_id=project_id,
+        limit=limit,
+    )
     return EvaluationListResponse(
         jobs=[job.to_summary() for job in jobs],
         request_id=request.state.request_id,
@@ -89,17 +110,19 @@ async def list_evaluations(
 async def get_evaluation_details(
     job_id: UUID,
     request: Request,
-    tenant_id: Annotated[str, Query(min_length=1, max_length=128)],
+    tenant_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    context: RequestContext | None = Depends(get_request_context),
 ) -> EvaluationJobDetailResponse:
+    resolved_tenant_id = tenant_from_context_or_request(context, tenant_id)
     settings = get_settings()
     check_rate_limit(
         request,
         route_name="get_evaluation_details",
         limit=settings.rate_limit_read_per_minute,
-        tenant_id=tenant_id,
+        tenant_id=resolved_tenant_id,
     )
     service = get_job_service(request)
-    job = await service.get_for_tenant(job_id, tenant_id)
+    job = await service.get_for_tenant(job_id, resolved_tenant_id)
     return job.to_detail_response(request.state.request_id)
 
 
@@ -107,15 +130,17 @@ async def get_evaluation_details(
 async def get_evaluation(
     job_id: UUID,
     request: Request,
-    tenant_id: Annotated[str, Query(min_length=1, max_length=128)],
+    tenant_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    context: RequestContext | None = Depends(get_request_context),
 ) -> EvaluationJobResponse:
+    resolved_tenant_id = tenant_from_context_or_request(context, tenant_id)
     settings = get_settings()
     check_rate_limit(
         request,
         route_name="get_evaluation",
         limit=settings.rate_limit_read_per_minute,
-        tenant_id=tenant_id,
+        tenant_id=resolved_tenant_id,
     )
     service = get_job_service(request)
-    job = await service.get_for_tenant(job_id, tenant_id)
+    job = await service.get_for_tenant(job_id, resolved_tenant_id)
     return job.to_response(request.state.request_id)

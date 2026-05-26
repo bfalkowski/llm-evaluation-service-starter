@@ -26,7 +26,7 @@ def test_openapi_schema_includes_evaluation_paths() -> None:
     assert "/metrics" not in schema["paths"]
 
 
-def test_openapi_schema_documents_required_tenant_query_parameters() -> None:
+def test_openapi_schema_documents_transitional_tenant_query_parameters() -> None:
     with TestClient(create_app()) as client:
         response = client.get("/openapi.json")
 
@@ -43,4 +43,4 @@ def test_openapi_schema_documents_required_tenant_query_parameters() -> None:
             parameter for parameter in parameters if parameter["name"] == "tenant_id"
         )
         assert tenant_id["in"] == "query"
-        assert tenant_id["required"] is True
+        assert tenant_id["required"] is False

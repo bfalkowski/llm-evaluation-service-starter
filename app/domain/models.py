@@ -22,6 +22,23 @@ class EvaluationRequest(BaseModel):
     rubric: str | None = Field(default=None, max_length=10_000)
 
 
+class SubmitEvaluationRequest(BaseModel):
+    tenant_id: str | None = Field(default=None, min_length=1, max_length=128)
+    project_id: str = Field(min_length=1, max_length=128)
+    question: str = Field(min_length=1, max_length=10_000)
+    answer: str = Field(min_length=1, max_length=20_000)
+    rubric: str | None = Field(default=None, max_length=10_000)
+
+    def to_evaluation_request(self, tenant_id: str) -> EvaluationRequest:
+        return EvaluationRequest(
+            tenant_id=tenant_id,
+            project_id=self.project_id,
+            question=self.question,
+            answer=self.answer,
+            rubric=self.rubric,
+        )
+
+
 class EvaluationResult(BaseModel):
     score: int = Field(ge=0, le=100)
     justification: str

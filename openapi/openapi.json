@@ -414,6 +414,60 @@
         "title": "JobStatus",
         "type": "string"
       },
+      "SubmitEvaluationRequest": {
+        "properties": {
+          "answer": {
+            "maxLength": 20000,
+            "minLength": 1,
+            "title": "Answer",
+            "type": "string"
+          },
+          "project_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Project Id",
+            "type": "string"
+          },
+          "question": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "rubric": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rubric"
+          },
+          "tenant_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenant Id"
+          }
+        },
+        "required": [
+          "project_id",
+          "question",
+          "answer"
+        ],
+        "title": "SubmitEvaluationRequest",
+        "type": "object"
+      },
       "SubmitEvaluationResponse": {
         "properties": {
           "job_id": {
@@ -536,12 +590,19 @@
           {
             "in": "query",
             "name": "tenant_id",
-            "required": true,
+            "required": false,
             "schema": {
-              "maxLength": 128,
-              "minLength": 1,
-              "title": "Tenant Id",
-              "type": "string"
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
             }
           },
           {
@@ -572,6 +633,22 @@
               "minimum": 1,
               "title": "Limit",
               "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
             }
           }
         ],
@@ -604,11 +681,29 @@
       },
       "post": {
         "operationId": "submit_evaluation_v1_evaluations_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/EvaluationRequest"
+                "$ref": "#/components/schemas/SubmitEvaluationRequest"
               }
             }
           },
@@ -659,12 +754,35 @@
           {
             "in": "query",
             "name": "tenant_id",
-            "required": true,
+            "required": false,
             "schema": {
-              "maxLength": 128,
-              "minLength": 1,
-              "title": "Tenant Id",
-              "type": "string"
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
             }
           }
         ],
@@ -713,12 +831,35 @@
           {
             "in": "query",
             "name": "tenant_id",
-            "required": true,
+            "required": false,
             "schema": {
-              "maxLength": 128,
-              "minLength": 1,
-              "title": "Tenant Id",
-              "type": "string"
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tenant Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
             }
           }
         ],
