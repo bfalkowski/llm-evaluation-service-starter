@@ -138,6 +138,33 @@ APP_DATABASE_URL=postgresql+asyncpg://app:app@localhost:5432/llm_evaluations \
 For managed deployments, set `APP_AUTO_CREATE_SCHEMA=false` and run migrations as an
 explicit deployment step before starting new application pods.
 
+## Quick local smoke test
+
+Free stuck dev ports, start the API and Streamlit console (sibling
+`llm-evaluation-console` checkout), and run a smoke test:
+
+```bash
+./scripts/local_e2e.sh
+```
+
+Open the console at `http://localhost:8501` and paste the printed demo bearer token
+into the sidebar.
+
+Stop the API, console, and free ports:
+
+```bash
+./scripts/local_e2e.sh --stop
+```
+
+API only (no Streamlit): `./scripts/local_e2e.sh --no-console`
+
+If Docker Compose Postgres fails with a port conflict on `5432`:
+
+```bash
+./scripts/local_e2e.sh --free-postgres --stop
+cd deploy && docker compose up --build
+```
+
 ## API examples
 
 Start Postgres and the service:
