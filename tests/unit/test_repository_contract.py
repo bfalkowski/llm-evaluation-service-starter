@@ -100,6 +100,25 @@ async def test_repository_applies_successful_transition(repository: JobRepositor
 
 
 @pytest.mark.asyncio
+async def test_repository_claims_oldest_queued_job(repository: JobRepository) -> None:
+    now = datetime.now(UTC)
+    newer = await repository.create(make_job(created_at=now))
+    older = await repository.create(make_job(created_at=now - timedelta(minutes=1)))
+
+    claimed = await repository.claim_next_queued()
+
+    assert claimed is not None
+    assert claimed.job_id == older.job_id
+    assert claimed.status == JobStatus.RUNNING
+
+    remaining = await repository.claim_next_queued()
+    assert remaining is not None
+    assert remaining.job_id == newer.job_id
+
+    assert await repository.claim_next_queued() is None
+
+
+@pytest.mark.asyncio
 async def test_repository_rejects_invalid_transition(repository: JobRepository) -> None:
     job = await repository.create(make_job())
 

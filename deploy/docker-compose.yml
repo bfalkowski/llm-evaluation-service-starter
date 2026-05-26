@@ -11,6 +11,7 @@ services:
       APP_OTEL_OTLP_ENDPOINT: ${APP_OTEL_OTLP_ENDPOINT:-}
       # Use APP_OTEL_EXPORTER=none to quiet local trace output, or otlp with
       # APP_OTEL_OTLP_ENDPOINT=http://otel-collector:4317 for a collector.
+      APP_PROCESS_ROLE: api
       APP_STORAGE_BACKEND: postgres
       APP_DATABASE_URL: postgresql+asyncpg://app:app@postgres:5432/llm_evaluations
     ports:
@@ -18,6 +19,27 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["python", "-m", "app.worker"]
+    environment:
+      APP_ENVIRONMENT: local
+      APP_LOG_LEVEL: INFO
+      APP_OTEL_ENABLED: "true"
+      APP_OTEL_EXPORTER: ${APP_OTEL_EXPORTER:-console}
+      APP_OTEL_OTLP_ENDPOINT: ${APP_OTEL_OTLP_ENDPOINT:-}
+      APP_PROCESS_ROLE: worker
+      APP_STORAGE_BACKEND: postgres
+      APP_DATABASE_URL: postgresql+asyncpg://app:app@postgres:5432/llm_evaluations
+      APP_AUTO_CREATE_SCHEMA: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      llm-evaluation-service:
+        condition: service_started
 
   postgres:
     image: postgres:16-alpine

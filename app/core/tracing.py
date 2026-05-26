@@ -36,6 +36,22 @@ def configure_tracing(
     FastAPIInstrumentor.instrument_app(app, excluded_urls="/health/live,/health/ready")
 
 
+def configure_worker_tracing(
+    service_name: str,
+    enabled: bool = True,
+    exporter: OtelExporter = "console",
+    otlp_endpoint: str | None = None,
+) -> None:
+    if not enabled or exporter == "none":
+        return
+
+    span_exporter = _build_span_exporter(exporter, otlp_endpoint)
+    resource = Resource.create({"service.name": f"{service_name}-worker"})
+    provider = TracerProvider(resource=resource)
+    provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+    trace.set_tracer_provider(provider)
+
+
 def _build_span_exporter(exporter: ActiveOtelExporter, otlp_endpoint: str | None) -> SpanExporter:
     if exporter == "console":
         return ConsoleSpanExporter()

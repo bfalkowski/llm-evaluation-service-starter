@@ -47,6 +47,20 @@ class InMemoryJobRepository:
 
         return sorted(jobs, key=lambda job: job.created_at, reverse=True)[:limit]
 
+    async def claim_next_queued(self) -> EvaluationJob | None:
+        async with self._lock:
+            queued_jobs = [
+                job for job in self._jobs.values() if JobStatus(job.status) == JobStatus.QUEUED
+            ]
+            if not queued_jobs:
+                return None
+
+            job = sorted(queued_jobs, key=lambda item: item.created_at)[0]
+            job.status = JobStatus.RUNNING
+            job.updated_at = datetime.now(UTC)
+            self._jobs[job.job_id] = job
+            return job
+
     async def set_running(self, job_id: UUID) -> EvaluationJob:
         return await self._transition(job_id, {JobStatus.QUEUED}, JobStatus.RUNNING)
 

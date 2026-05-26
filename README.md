@@ -94,13 +94,14 @@ The main flow is:
 2. The job service creates a job with status `queued`.
 3. The job is stored in PostgreSQL by default.
 4. The job ID is placed on the in-memory queue.
-5. A background worker marks it `running`, calls the mock evaluator, then marks it `succeeded` or `failed`.
+5. A worker marks it `running`, calls the mock evaluator, then marks it `succeeded` or `failed`.
 6. `GET /v1/evaluations/{job_id}` returns status and result metadata.
 
 Prompt and answer content are accepted by the service but are not returned in the default job status response.
 
-The current background worker runs inside the API process for local simplicity. See
-`docs/api-worker-split.md` for the production-shaped API/worker split.
+The default `combined` process role runs API traffic and in-process job processing for
+local simplicity. The service also includes a worker entrypoint for split API/worker
+deployments backed by repository-level queued-job claims. See `docs/api-worker-split.md`.
 
 The evaluator is intentionally mocked and deterministic. See `docs/provider-adapter.md`
 for the future provider adapter boundary.
@@ -288,6 +289,9 @@ cd deploy
 docker compose up --build
 ```
 
+Docker Compose runs the API and worker as separate containers against the same Postgres
+database. The API uses `APP_PROCESS_ROLE=api`; the worker runs `python -m app.worker`.
+
 ## Kubernetes notes
 
 The manifests in `deploy/k8s` are basic starting points.
@@ -319,6 +323,7 @@ kubectl apply -f deploy/k8s/service.yaml
 The demo deployment includes:
 
 - One service replica.
+- Combined API/worker process role.
 - Liveness probe on `/health/live`.
 - Readiness probe on `/health/ready`.
 - ConfigMap-driven environment variables.

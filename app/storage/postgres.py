@@ -89,6 +89,25 @@ class PostgresJobRepository:
             rows = (await session.scalars(statement)).all()
             return [self._to_domain(row) for row in rows]
 
+    async def claim_next_queued(self) -> EvaluationJob | None:
+        statement = (
+            select(EvaluationJobRow)
+            .where(EvaluationJobRow.status == JobStatus.QUEUED.value)
+            .order_by(EvaluationJobRow.created_at.asc())
+            .limit(1)
+            .with_for_update(skip_locked=True)
+        )
+        async with self._sessionmaker() as session:
+            row = await session.scalar(statement)
+            if row is None:
+                return None
+
+            row.status = JobStatus.RUNNING.value
+            row.updated_at = datetime.now(UTC)
+            await session.commit()
+            await session.refresh(row)
+            return self._to_domain(row)
+
     async def set_running(self, job_id: UUID) -> EvaluationJob:
         return await self._transition(job_id, {JobStatus.QUEUED}, JobStatus.RUNNING)
 

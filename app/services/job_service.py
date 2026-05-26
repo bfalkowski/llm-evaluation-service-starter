@@ -107,6 +107,42 @@ class EvaluationJobService:
                 logger.exception("evaluation job failed", extra={"job_id": str(job_id)})
                 raise
 
+    async def process_claimed(self, job: EvaluationJob) -> None:
+        with traced_span(
+            "job.process",
+            tenant_id=job.tenant_id,
+            project_id=job.project_id,
+            job_id=str(job.job_id),
+        ):
+            try:
+                self.audit.record(
+                    event_type="evaluation.job_running",
+                    tenant_id=job.tenant_id,
+                    project_id=job.project_id,
+                    job_id=str(job.job_id),
+                )
+                result = await self.evaluator.score(job.request)
+                updated = await self.repository.set_succeeded(job.job_id, result)
+                self.audit.record(
+                    event_type="evaluation.job_succeeded",
+                    tenant_id=updated.tenant_id,
+                    project_id=updated.project_id,
+                    job_id=str(job.job_id),
+                    score=result.score,
+                )
+                logger.info(
+                    "evaluation job succeeded",
+                    extra={
+                        "tenant_id": updated.tenant_id,
+                        "project_id": updated.project_id,
+                        "job_id": str(job.job_id),
+                    },
+                )
+            except Exception as exc:
+                await self._record_failure(job, "Evaluation failed.", exc)
+                logger.exception("evaluation job failed", extra={"job_id": str(job.job_id)})
+                raise
+
     async def _record_failure(
         self,
         job: EvaluationJob,

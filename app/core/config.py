@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="APP_", env_file=".env", extra="ignore")
 
     service_name: str = "llm-evaluation-service"
+    process_role: Literal["combined", "api", "worker"] = "combined"
     environment: str = "local"
     log_level: str = "INFO"
     cors_allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]

@@ -20,6 +20,7 @@ from app.core.tracing import configure_tracing
 from app.services.evaluator import Evaluator
 from app.services.job_service import EvaluationJobService
 from app.services.queue import InMemoryJobQueue
+from app.services.worker import EvaluationWorker
 from app.storage.base import JobRepository
 from app.storage.in_memory import InMemoryJobRepository
 
@@ -63,6 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     audit = AuditRecorder()
     rate_limiter = InMemoryRateLimiter()
     job_service = EvaluationJobService(repository, queue, evaluator, audit)
+    worker = EvaluationWorker(job_service, poll_seconds=settings.worker_poll_seconds)
 
     app.state.repository = repository
     app.state.queue = queue
@@ -70,13 +72,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.audit = audit
     app.state.rate_limiter = rate_limiter
     app.state.job_service = job_service
+    app.state.worker = worker
 
-    queue.start(job_service.process)
-    logger.info("service started")
+    if settings.process_role == "combined":
+        queue.start(job_service.process)
+    logger.info("service started", extra={"process_role": settings.process_role})
     try:
         yield
     finally:
         await queue.stop()
+        await worker.stop()
         await repository.close()
         logger.info("service stopped")
 

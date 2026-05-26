@@ -1,7 +1,12 @@
 # API And Worker Split
 
-The current service processes evaluation jobs with an in-process background worker. That
-keeps local development simple and makes the job lifecycle easy to inspect.
+The service supports two runtime shapes:
+
+- `combined`: API traffic and in-process job processing in one process.
+- `api` plus `python -m app.worker`: separate API and worker processes sharing Postgres.
+
+`combined` keeps local development simple. The split worker entrypoint gives managed
+deployments a clearer scale boundary.
 
 For a managed Kubernetes deployment, the natural next shape is:
 
@@ -12,9 +17,9 @@ API deployment
   -> managed Postgres
 ```
 
-## Current Shape
+## Local Combined Shape
 
-Today, the FastAPI process owns both API traffic and background job processing:
+By default, the FastAPI process owns both API traffic and background job processing:
 
 ```text
 POST /v1/evaluations
@@ -36,9 +41,36 @@ Current limitations:
 - queued jobs are not durable across process restarts
 - API and worker capacity cannot scale independently
 - a long-running evaluation shares process resources with API traffic
-- multiple API replicas would each have their own in-memory queue
+- multiple `combined` API replicas would each have their own in-memory queue
 
-## Target Production Shape
+## Split Worker Shape
+
+For split deployments, the API process only creates queued job rows. A separate worker
+process polls the repository, atomically claims the oldest queued job, and processes it:
+
+```text
+POST /v1/evaluations
+  -> create queued job row
+  -> worker claims queued job from Postgres
+  -> worker evaluates job
+  -> update job row
+```
+
+Run a worker process with:
+
+```bash
+APP_PROCESS_ROLE=worker python -m app.worker
+```
+
+Run API-only mode with:
+
+```bash
+APP_PROCESS_ROLE=api uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Docker Compose uses this split shape locally.
+
+## Target Durable Queue Shape
 
 In a production-shaped deployment, the API and worker become separate workloads:
 
@@ -69,8 +101,8 @@ The worker is responsible for:
 
 ## Queue Boundary
 
-The current `InMemoryJobQueue` is intentionally small. A durable queue adapter should
-preserve the same conceptual contract:
+The current split worker uses Postgres-backed queued-job claims. A future durable queue
+adapter should preserve the same conceptual contract:
 
 ```text
 enqueue(job_id)
@@ -111,13 +143,16 @@ API and worker replicas should scale on different signals:
 
 ## Migration Path
 
-A conservative path:
+Current status:
 
 1. Keep the current in-process worker for local development.
-2. Introduce a queue protocol around the current in-memory queue.
-3. Add a worker entrypoint that can process queue messages without serving HTTP.
-4. Add a durable queue adapter.
-5. Add a second worker Deployment in Helm.
-6. Keep tests using the in-memory queue by default.
+2. Add a worker entrypoint that can process jobs without serving HTTP.
+3. Claim queued jobs through the repository so API and worker processes can split.
+
+Next steps:
+
+1. Add a second worker Deployment in Helm.
+2. Add a durable queue adapter when the target platform is known.
+3. Keep tests using in-memory storage by default.
 
 This keeps the starter usable while making the managed runtime path explicit.
