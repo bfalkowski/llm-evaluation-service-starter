@@ -84,6 +84,12 @@ kubectl -n llm-evaluation logs deployment/llm-evaluation-service
 curl -s 'http://localhost:8000/v1/evaluations?tenant_id=<tenant-id>'
 ```
 
+If auth is enabled, provide a bearer token instead of a tenant query parameter:
+
+```bash
+curl -s -H "authorization: Bearer ${TOKEN}" 'http://localhost:8000/v1/evaluations'
+```
+
 Mitigation:
 
 - restart the deployment for local/demo environments
@@ -111,6 +117,13 @@ Checks:
 ```bash
 kubectl -n llm-evaluation logs deployment/llm-evaluation-service
 curl -s 'http://localhost:8000/v1/evaluations/<job-id>?tenant_id=<tenant-id>'
+```
+
+If auth is enabled:
+
+```bash
+curl -s -H "authorization: Bearer ${TOKEN}" \
+  'http://localhost:8000/v1/evaluations/<job-id>'
 ```
 
 Operational logs should include `job_id`, `tenant_id`, and `project_id` where available,

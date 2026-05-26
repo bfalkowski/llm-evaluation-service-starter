@@ -2,7 +2,7 @@
 
 A clean-room FastAPI starter for a small **LLM Evaluation Job Service**.
 
-This repository provides a small AI-adjacent platform service with clean API boundaries, typed domain models, deterministic tests, async job processing, structured logging, OpenTelemetry tracing, durable job metadata, and deployable local/runtime configuration. It does not require a real model provider, external queue, auth system, or observability backend.
+This repository provides a small AI-adjacent platform service with clean API boundaries, typed domain models, deterministic tests, async job processing, structured logging, demo JWT authentication, OpenTelemetry tracing, durable job metadata, and deployable local/runtime configuration. It does not require a real model provider, external queue, external auth provider, or observability backend.
 
 Companion repositories:
 
@@ -27,7 +27,7 @@ Companion repositories:
 
 - No real model provider integration.
 - No durable external queue.
-- No authentication or RBAC.
+- No production identity provider or RBAC integration.
 - No production audit log store.
 - No metrics backend or trace collector requirement.
 - No prompt/answer logging by default.
@@ -172,10 +172,49 @@ Example response:
 }
 ```
 
+Enable demo auth for local testing:
+
+```bash
+APP_AUTH_ENABLED=true \
+APP_AUTH_DEMO_SECRET=local-demo-secret \
+uvicorn app.main:app --reload
+```
+
+Create a demo bearer token:
+
+```bash
+APP_AUTH_DEMO_SECRET=local-demo-secret \
+python scripts/create_demo_jwt.py --tenant-id tenant-a --subject local-user
+```
+
+When auth is enabled, tenant context comes from the bearer token. The transitional
+`tenant_id` body/query fields remain available only for auth-disabled local workflows.
+
+```bash
+TOKEN="<paste-token>"
+
+curl -s -X POST http://localhost:8000/v1/evaluations \
+  -H 'content-type: application/json' \
+  -H "authorization: Bearer ${TOKEN}" \
+  -d '{
+    "project_id": "project-a",
+    "question": "Why is observability important for AI platform services?",
+    "answer": "Observability helps teams understand latency, failures, cost, and quality behavior across AI workflows.",
+    "rubric": "Mention latency, failures, or quality."
+  }'
+```
+
 Retrieve a job:
 
 ```bash
 curl -s 'http://localhost:8000/v1/evaluations/<job_id>?tenant_id=tenant-a'
+```
+
+With auth enabled:
+
+```bash
+curl -s -H "authorization: Bearer ${TOKEN}" \
+  'http://localhost:8000/v1/evaluations/<job_id>'
 ```
 
 Retrieve full request details for a tenant-scoped job:
@@ -188,6 +227,13 @@ List recent jobs for a tenant:
 
 ```bash
 curl -s 'http://localhost:8000/v1/evaluations?tenant_id=tenant-a&limit=20'
+```
+
+With auth enabled:
+
+```bash
+curl -s -H "authorization: Bearer ${TOKEN}" \
+  'http://localhost:8000/v1/evaluations?limit=20'
 ```
 
 Health checks:
@@ -385,15 +431,15 @@ APP_OTEL_EXPORTER=none uvicorn app.main:app --reload
 
 ## Security and governance notes
 
-Auth is outside the scope of this starter. Production deployments should add authentication at the API boundary through FastAPI dependencies or middleware. Tenant and project authorization should be checked before creating or reading jobs.
+The service includes an optional demo JWT boundary for local and portfolio workflows. Set `APP_AUTH_ENABLED=true` and provide `APP_AUTH_DEMO_SECRET` to require `Authorization: Bearer <token>` on evaluation routes. Demo tokens are HMAC-signed and can be generated with `scripts/create_demo_jwt.py`.
 
-External read endpoints require tenant context and return `404` for cross-tenant job lookups. This is an application-level guard for the starter, not a replacement for production authentication, authorization, or database-level isolation. Production deployments should derive tenant context from auth claims and may add Postgres Row-Level Security or equivalent database controls.
+Production deployments should replace the demo shared-secret validator with an identity-provider-backed OIDC/JWKS validator, tenant/project authorization checks, token rotation, and platform-managed secrets. External read endpoints return `404` for cross-tenant job lookups. This is an application-level guard for the starter, not a replacement for production authorization or database-level isolation. Production deployments may add Postgres Row-Level Security or equivalent database controls.
 
 The service includes a small in-memory fixed-window rate limiter for local development and single-process demos. It protects job submission, job reads, and job listing with separate configurable limits. Production deployments should enforce shared rate limits at the API gateway, ingress, or with a shared backend such as Redis so limits apply consistently across replicas.
 
 Recommended production additions:
 
-- Authentication and authorization.
+- Production authentication and authorization.
 - Tenant-aware data isolation.
 - Audit logging to an append-only durable store.
 - Prompt/answer redaction or classification before optional logging.
@@ -413,7 +459,7 @@ The main extension points are:
 - Replace `InMemoryJobQueue` with SQS, Kafka, Celery, Dramatiq, Arq, or another queue/worker system.
 - Replace `Evaluator.score` with a real provider adapter.
 - Replace `AuditRecorder` with a durable audit event writer.
-- Add auth/RBAC as dependencies on the route layer.
+- Replace demo JWT validation with production OIDC/JWKS auth and RBAC dependencies.
 
 ## Production Extensions
 
