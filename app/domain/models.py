@@ -48,6 +48,9 @@ class EvaluationJobResponse(BaseModel):
     request: EvaluationRequestSummary
     result: EvaluationResult | None = None
     error_message: str | None = None
+    attempt_count: int
+    max_attempts: int
+    claimed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     request_id: str
@@ -61,6 +64,9 @@ class EvaluationJobDetailResponse(BaseModel):
     request: EvaluationRequest
     result: EvaluationResult | None = None
     error_message: str | None = None
+    attempt_count: int
+    max_attempts: int
+    claimed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     request_id: str
@@ -73,6 +79,9 @@ class EvaluationJobSummary(BaseModel):
     status: JobStatus
     result: EvaluationResult | None = None
     error_message: str | None = None
+    attempt_count: int
+    max_attempts: int
+    claimed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -92,6 +101,9 @@ class EvaluationJob(BaseModel):
     request: EvaluationRequest
     result: EvaluationResult | None = None
     error_message: str | None = None
+    attempt_count: int = 0
+    max_attempts: int = 3
+    claimed_at: datetime | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

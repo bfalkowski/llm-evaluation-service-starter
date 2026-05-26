@@ -50,16 +50,42 @@ class InMemoryJobRepository:
     async def claim_next_queued(self) -> EvaluationJob | None:
         async with self._lock:
             queued_jobs = [
-                job for job in self._jobs.values() if JobStatus(job.status) == JobStatus.QUEUED
+                job
+                for job in self._jobs.values()
+                if JobStatus(job.status) == JobStatus.QUEUED
+                and job.attempt_count < job.max_attempts
             ]
             if not queued_jobs:
                 return None
 
             job = sorted(queued_jobs, key=lambda item: item.created_at)[0]
             job.status = JobStatus.RUNNING
+            job.attempt_count += 1
+            job.claimed_at = datetime.now(UTC)
             job.updated_at = datetime.now(UTC)
             self._jobs[job.job_id] = job
             return job
+
+    async def recover_stale_running(self, *, cutoff: datetime) -> int:
+        recovered = 0
+        async with self._lock:
+            for job in self._jobs.values():
+                if JobStatus(job.status) != JobStatus.RUNNING:
+                    continue
+                if job.claimed_at is None or job.claimed_at >= cutoff:
+                    continue
+
+                if job.attempt_count >= job.max_attempts:
+                    job.status = JobStatus.FAILED
+                    job.error_message = "Evaluation worker timed out."
+                else:
+                    job.status = JobStatus.QUEUED
+                    job.error_message = "Evaluation worker stopped before completing the job."
+                job.claimed_at = None
+                job.updated_at = datetime.now(UTC)
+                self._jobs[job.job_id] = job
+                recovered += 1
+        return recovered
 
     async def set_running(self, job_id: UUID) -> EvaluationJob:
         return await self._transition(job_id, {JobStatus.QUEUED}, JobStatus.RUNNING)

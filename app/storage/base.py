@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -22,6 +23,8 @@ class JobRepository(Protocol):
     ) -> list[EvaluationJob]: ...
 
     async def claim_next_queued(self) -> EvaluationJob | None: ...
+
+    async def recover_stale_running(self, *, cutoff: datetime) -> int: ...
 
     async def set_running(self, job_id: UUID) -> EvaluationJob: ...
 

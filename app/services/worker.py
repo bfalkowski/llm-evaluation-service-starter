@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import UTC, datetime, timedelta
 
 from app.services.job_service import EvaluationJobService
 
@@ -9,9 +10,16 @@ logger = logging.getLogger(__name__)
 
 
 class EvaluationWorker:
-    def __init__(self, job_service: EvaluationJobService, *, poll_seconds: float) -> None:
+    def __init__(
+        self,
+        job_service: EvaluationJobService,
+        *,
+        poll_seconds: float,
+        stale_job_seconds: float,
+    ) -> None:
         self.job_service = job_service
         self.poll_seconds = poll_seconds
+        self.stale_job_seconds = stale_job_seconds
         self._task: asyncio.Task[None] | None = None
         self._stopping = asyncio.Event()
 
@@ -29,6 +37,11 @@ class EvaluationWorker:
         logger.info("evaluation worker started")
         try:
             while not self._stopping.is_set():
+                cutoff = datetime.now(UTC) - timedelta(seconds=self.stale_job_seconds)
+                recovered = await self.job_service.repository.recover_stale_running(cutoff=cutoff)
+                if recovered:
+                    logger.warning("recovered stale running jobs", extra={"job_count": recovered})
+
                 claimed = await self.job_service.repository.claim_next_queued()
                 if claimed is None:
                     await asyncio.sleep(self.poll_seconds)

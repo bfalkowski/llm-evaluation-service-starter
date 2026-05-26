@@ -15,7 +15,7 @@ from app.storage.in_memory import InMemoryJobRepository
 async def test_worker_claims_and_processes_queued_jobs() -> None:
     repo = InMemoryJobRepository()
     service = EvaluationJobService(repo, InMemoryJobQueue(), Evaluator(), AuditRecorder())
-    worker = EvaluationWorker(service, poll_seconds=0.01)
+    worker = EvaluationWorker(service, poll_seconds=0.01, stale_job_seconds=300)
     job = await service.submit(
         EvaluationRequest(
             tenant_id="tenant-a",

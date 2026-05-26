@@ -50,7 +50,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     audit = AuditRecorder()
     rate_limiter = InMemoryRateLimiter()
     job_service = EvaluationJobService(repository, queue, evaluator, audit)
-    worker = EvaluationWorker(job_service, poll_seconds=settings.worker_poll_seconds)
+    worker = EvaluationWorker(
+        job_service,
+        poll_seconds=settings.worker_poll_seconds,
+        stale_job_seconds=settings.worker_stale_job_seconds,
+    )
 
     app.state.repository = repository
     app.state.queue = queue

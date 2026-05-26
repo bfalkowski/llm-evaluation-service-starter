@@ -32,7 +32,11 @@ async def run_worker() -> None:
     evaluator = Evaluator(timeout_seconds=settings.evaluator_timeout_seconds)
     audit = AuditRecorder()
     job_service = EvaluationJobService(repository, queue, evaluator, audit)
-    worker = EvaluationWorker(job_service, poll_seconds=settings.worker_poll_seconds)
+    worker = EvaluationWorker(
+        job_service,
+        poll_seconds=settings.worker_poll_seconds,
+        stale_job_seconds=settings.worker_stale_job_seconds,
+    )
 
     stop_event = asyncio.Event()
     loop = asyncio.get_running_loop()

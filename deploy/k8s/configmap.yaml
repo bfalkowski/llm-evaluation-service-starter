@@ -10,4 +10,5 @@ data:
   APP_OTEL_EXPORTER: "otlp"
   APP_OTEL_OTLP_ENDPOINT: "http://otel-collector:4317"
   APP_PROCESS_ROLE: "combined"
+  APP_WORKER_STALE_JOB_SECONDS: "300"
   APP_STORAGE_BACKEND: "postgres"

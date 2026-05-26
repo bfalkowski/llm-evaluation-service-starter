@@ -56,6 +56,11 @@ POST /v1/evaluations
   -> update job row
 ```
 
+Claims record `attempt_count` and `claimed_at`. On each poll, the worker also recovers
+stale `running` jobs older than `APP_WORKER_STALE_JOB_SECONDS`: jobs with attempts
+remaining are returned to `queued`, and jobs that exhausted `max_attempts` are marked
+`failed`.
+
 Run a worker process with:
 
 ```bash
@@ -96,7 +101,7 @@ The worker is responsible for:
 - consuming queue messages
 - moving jobs through `queued`, `running`, `succeeded`, and `failed`
 - calling the evaluator/provider adapter
-- applying timeout, retry, and circuit-breaker policy
+- applying timeout, retry, stale-job recovery, and circuit-breaker policy
 - writing results and failure metadata
 
 ## Queue Boundary
@@ -148,6 +153,7 @@ Current status:
 1. Keep the current in-process worker for local development.
 2. Add a worker entrypoint that can process jobs without serving HTTP.
 3. Claim queued jobs through the repository so API and worker processes can split.
+4. Track claim attempts and recover stale `running` jobs.
 
 Next steps:
 

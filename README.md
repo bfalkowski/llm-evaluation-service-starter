@@ -94,7 +94,7 @@ The main flow is:
 2. The job service creates a job with status `queued`.
 3. The job is stored in PostgreSQL by default.
 4. The job ID is placed on the in-memory queue.
-5. A worker marks it `running`, calls the mock evaluator, then marks it `succeeded` or `failed`.
+5. A worker claims the job, records attempt metadata, calls the mock evaluator, then marks it `succeeded` or `failed`.
 6. `GET /v1/evaluations/{job_id}` returns status and result metadata.
 
 Prompt and answer content are accepted by the service but are not returned in the default job status response.
@@ -102,6 +102,9 @@ Prompt and answer content are accepted by the service but are not returned in th
 The default `combined` process role runs API traffic and in-process job processing for
 local simplicity. The service also includes a worker entrypoint for split API/worker
 deployments backed by repository-level queued-job claims. See `docs/api-worker-split.md`.
+
+Split workers recover stale `running` jobs after `APP_WORKER_STALE_JOB_SECONDS` and
+retry them until the job's attempt budget is exhausted.
 
 The evaluator is intentionally mocked and deterministic. See `docs/provider-adapter.md`
 for the future provider adapter boundary.

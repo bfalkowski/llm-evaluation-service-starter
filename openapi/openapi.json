@@ -3,6 +3,22 @@
     "schemas": {
       "EvaluationJobDetailResponse": {
         "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "claimed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed At"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -23,6 +39,10 @@
             "format": "uuid",
             "title": "Job Id",
             "type": "string"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
           },
           "project_id": {
             "title": "Project Id",
@@ -64,6 +84,8 @@
           "project_id",
           "status",
           "request",
+          "attempt_count",
+          "max_attempts",
           "created_at",
           "updated_at",
           "request_id"
@@ -73,6 +95,22 @@
       },
       "EvaluationJobResponse": {
         "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "claimed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed At"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -93,6 +131,10 @@
             "format": "uuid",
             "title": "Job Id",
             "type": "string"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
           },
           "project_id": {
             "title": "Project Id",
@@ -134,6 +176,8 @@
           "project_id",
           "status",
           "request",
+          "attempt_count",
+          "max_attempts",
           "created_at",
           "updated_at",
           "request_id"
@@ -143,6 +187,22 @@
       },
       "EvaluationJobSummary": {
         "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "claimed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed At"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -163,6 +223,10 @@
             "format": "uuid",
             "title": "Job Id",
             "type": "string"
+          },
+          "max_attempts": {
+            "title": "Max Attempts",
+            "type": "integer"
           },
           "project_id": {
             "title": "Project Id",
@@ -196,6 +260,8 @@
           "tenant_id",
           "project_id",
           "status",
+          "attempt_count",
+          "max_attempts",
           "created_at",
           "updated_at"
         ],

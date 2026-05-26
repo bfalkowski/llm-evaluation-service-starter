@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     otel_exporter: Literal["console", "otlp", "none"] = "console"
     otel_otlp_endpoint: str | None = None
     worker_poll_seconds: float = 0.05
+    worker_stale_job_seconds: float = 300.0
     evaluator_timeout_seconds: float = 5.0
     storage_backend: str = "postgres"
     database_url: str = "postgresql+asyncpg://app:app@localhost:5432/llm_evaluations"

@@ -16,6 +16,7 @@ def make_job(
     tenant_id: str = "tenant-a",
     project_id: str = "project-a",
     created_at: datetime | None = None,
+    max_attempts: int = 3,
 ) -> EvaluationJob:
     timestamp = created_at or datetime.now(UTC)
     return EvaluationJob(
@@ -29,6 +30,7 @@ def make_job(
             question="What does the service evaluate?",
             answer="It evaluates answer quality with deterministic mock scoring.",
         ),
+        max_attempts=max_attempts,
         created_at=timestamp,
         updated_at=timestamp,
     )
@@ -110,12 +112,46 @@ async def test_repository_claims_oldest_queued_job(repository: JobRepository) ->
     assert claimed is not None
     assert claimed.job_id == older.job_id
     assert claimed.status == JobStatus.RUNNING
+    assert claimed.attempt_count == 1
+    assert claimed.claimed_at is not None
 
     remaining = await repository.claim_next_queued()
     assert remaining is not None
     assert remaining.job_id == newer.job_id
 
     assert await repository.claim_next_queued() is None
+
+
+@pytest.mark.asyncio
+async def test_repository_requeues_stale_running_jobs(repository: JobRepository) -> None:
+    job = await repository.create(make_job())
+    claimed = await repository.claim_next_queued()
+    assert claimed is not None
+
+    recovered_count = await repository.recover_stale_running(cutoff=datetime.now(UTC))
+    recovered = await repository.get(job.job_id)
+
+    assert recovered_count == 1
+    assert recovered.status == JobStatus.QUEUED
+    assert recovered.attempt_count == 1
+    assert recovered.claimed_at is None
+
+
+@pytest.mark.asyncio
+async def test_repository_fails_stale_running_jobs_after_max_attempts(
+    repository: JobRepository,
+) -> None:
+    job = await repository.create(make_job(max_attempts=1))
+    claimed = await repository.claim_next_queued()
+    assert claimed is not None
+
+    recovered_count = await repository.recover_stale_running(cutoff=datetime.now(UTC))
+    recovered = await repository.get(job.job_id)
+
+    assert recovered_count == 1
+    assert recovered.status == JobStatus.FAILED
+    assert recovered.attempt_count == 1
+    assert recovered.error_message == "Evaluation worker timed out."
 
 
 @pytest.mark.asyncio
